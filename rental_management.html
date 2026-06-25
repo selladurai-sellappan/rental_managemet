@@ -1,0 +1,2071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RentEase – Rental Management System</title>
+<!-- SheetJS for Excel read/write (requires internet on first load) -->
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333}
+
+/* LOGIN */
+#loginPage{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a3c5e,#2d6a9f)}
+.login-card{background:#fff;border-radius:14px;padding:48px 40px;width:390px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-logo{text-align:center;margin-bottom:32px}
+.login-logo h1{font-size:26px;color:#1a3c5e;font-weight:800}
+.login-logo p{color:#888;font-size:13px;margin-top:4px}
+.login-hint{text-align:center;font-size:11px;color:#aaa;margin-top:14px}
+.login-error{color:#e53e3e;font-size:13px;text-align:center;margin-bottom:12px;display:none}
+.forgot-link{text-align:center;margin-top:14px}
+.forgot-link a{font-size:12px;color:#2d6a9f;text-decoration:none}
+.forgot-link a:hover{text-decoration:underline}
+#setupPage{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a3c5e,#2d6a9f)}
+
+/* FORMS */
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:12px;font-weight:700;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+.form-group input,.form-group select{width:100%;padding:10px 13px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none;transition:border-color .2s;background:#fff}
+.form-group input:focus,.form-group select:focus{border-color:#2d6a9f}
+.form-group input[readonly]{background:#f5f7fa;cursor:default}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid .full{grid-column:1/-1}
+.form-section{grid-column:1/-1;font-size:10px;font-weight:800;color:#2d6a9f;text-transform:uppercase;letter-spacing:1.2px;border-bottom:2px solid #e8f0fe;padding-bottom:6px;margin-top:10px;margin-bottom:2px}
+
+/* BUTTONS */
+.btn{padding:9px 18px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-block{width:100%;justify-content:center}
+.btn-primary{background:#2d6a9f;color:#fff}
+.btn-primary:hover{background:#1a3c5e}
+.btn-success{background:#38a169;color:#fff}
+.btn-success:hover{background:#276749}
+.btn-danger{background:#e53e3e;color:#fff}
+.btn-danger:hover{background:#c53030}
+.btn-outline{background:transparent;border:1.5px solid #2d6a9f;color:#2d6a9f}
+.btn-outline:hover{background:#2d6a9f;color:#fff}
+.btn-ghost{background:transparent;border:1.5px solid #ccc;color:#555}
+.btn-ghost:hover{background:#f0f0f0}
+.btn-excel{background:#217346;color:#fff}
+.btn-excel:hover{background:#155a34}
+.btn-sm{padding:5px 12px;font-size:12px}
+
+/* APP LAYOUT */
+#appPage{display:flex;min-height:100vh}
+.sidebar{width:235px;background:#1a3c5e;color:#fff;display:flex;flex-direction:column;position:fixed;height:100vh;overflow-y:auto}
+.sidebar-header{padding:22px 18px;border-bottom:1px solid rgba(255,255,255,.12)}
+.sidebar-header h2{font-size:16px;font-weight:800}
+.sidebar-header p{font-size:11px;opacity:.6;margin-top:3px}
+.sidebar-nav{flex:1;padding:12px 0}
+.nav-item{padding:12px 18px;cursor:pointer;display:flex;align-items:center;gap:11px;font-size:13px;transition:background .15s;border-left:3px solid transparent}
+.nav-item:hover{background:rgba(255,255,255,.1)}
+.nav-item.active{background:rgba(255,255,255,.18);border-left-color:#63b3ed}
+.nav-icon{font-size:17px;width:22px;text-align:center}
+.sidebar-divider{border:none;border-top:1px solid rgba(255,255,255,.12);margin:8px 18px}
+.sidebar-footer{padding:14px 18px;border-top:1px solid rgba(255,255,255,.12)}
+.main-content{margin-left:235px;flex:1;padding:30px;min-height:100vh}
+
+/* VIEWS */
+.view{display:none}
+.view.active{display:block}
+.page-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;gap:12px;flex-wrap:wrap}
+.page-title h2{font-size:21px;font-weight:800;color:#1a3c5e}
+.page-title p{font-size:12px;color:#888;margin-top:3px}
+.header-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.stat-card .lbl{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px}
+.stat-card .val{font-size:26px;font-weight:800;color:#1a3c5e;margin-top:4px}
+.stat-card .sub{font-size:11px;color:#bbb;margin-top:2px}
+
+/* MONTH BAR */
+.month-bar{display:flex;align-items:center;gap:14px;background:#fff;padding:14px 18px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:18px;flex-wrap:wrap}
+.month-bar label{font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.4px}
+.month-bar input[type=month]{padding:7px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;outline:none}
+.month-bar input[type=month]:focus{border-color:#2d6a9f}
+
+/* TABLE */
+.table-container{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:hidden}
+.table-header{padding:14px 18px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.table-header h3{font-size:14px;font-weight:700;color:#1a3c5e}
+.search-bar{padding:7px 13px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;outline:none;width:210px}
+.search-bar:focus{border-color:#2d6a9f}
+table{width:100%;border-collapse:collapse}
+th{background:#f8fafc;padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+td{padding:11px 14px;font-size:13px;border-top:1px solid #f5f5f5;vertical-align:middle}
+tr:hover td{background:#fafcff}
+.empty-state{padding:56px;text-align:center;color:#bbb;font-size:14px}
+
+/* BADGES */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge-paid{background:#c6f6d5;color:#276749}
+.badge-pending{background:#feebc8;color:#975a16}
+.badge-partial{background:#bee3f8;color:#2c5282}
+.badge-informed{background:#e9d8fd;color:#553c9a}
+.badge-active{background:#c6f6d5;color:#276749}
+.badge-inactive{background:#fed7d7;color:#9b2c2c}
+.badge-signed{background:#e9d8fd;color:#553c9a}
+.badge-expired{background:#fed7d7;color:#9b2c2c}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:14px;width:90%;max-width:680px;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-sm{max-width:430px}
+.modal-header{padding:18px 22px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:1}
+.modal-header h3{font-size:16px;font-weight:800;color:#1a3c5e}
+.modal-body{padding:22px}
+.modal-footer{padding:14px 22px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:#fff}
+.close-btn{background:none;border:none;font-size:22px;cursor:pointer;color:#999;line-height:1;padding:0}
+.close-btn:hover{color:#333}
+
+/* MISC */
+.detail-row{display:flex;padding:9px 0;border-bottom:1px solid #f5f5f5}
+.detail-row:last-child{border:none}
+.detail-label{width:46%;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.4px}
+.detail-value{flex:1;font-size:13px;color:#333}
+.info-box{background:#f8fafc;border-radius:8px;padding:14px;margin-bottom:18px;font-size:13px;color:#555;border-left:3px solid #2d6a9f}
+.info-box strong{color:#1a3c5e}
+.warn-text{color:#e53e3e;font-size:12px;margin-top:8px;display:none}
+.text-danger{color:#e53e3e}
+.text-success{color:#38a169}
+.fw-bold{font-weight:700}
+.actions-row{display:flex;gap:6px;flex-wrap:wrap}
+.db-status{font-size:11px;color:rgba(255,255,255,.5);padding:0 18px 12px;display:flex;align-items:center;gap:6px}
+.db-dot{width:7px;height:7px;border-radius:50%;background:#68d391;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<!-- ======= LOGIN ======= -->
+<div id="loginPage">
+  <div class="login-card">
+    <div class="login-logo">
+      <h1>🏠 RentEase</h1>
+      <p>Rental Management System</p>
+    </div>
+    <div class="login-error" id="loginError">Invalid username or password</div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="loginUser" placeholder="Enter username" autocomplete="username"/>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password"/>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="doLogin()">Sign In</button>
+    <p class="forgot-link"><a href="#" onclick="openForgotModal();return false">Forgot Password?</a></p>
+  </div>
+</div>
+
+<!-- ======= SETUP (first launch) ======= -->
+<div id="setupPage" style="display:none">
+  <div class="login-card">
+    <div class="login-logo">
+      <h1>🏠 RentEase</h1>
+      <p>First-time Setup</p>
+    </div>
+    <div class="login-error" id="setupError"></div>
+    <p style="font-size:13px;color:#555;margin-bottom:20px;text-align:center">Welcome! Create your account credentials to get started.</p>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="setupUser" placeholder="Choose a username" autocomplete="username"/>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="setupPass" placeholder="Choose a password (min 6 chars)" autocomplete="new-password"/>
+    </div>
+    <div class="form-group">
+      <label>Confirm Password</label>
+      <input type="password" id="setupPass2" placeholder="Re-enter password" autocomplete="new-password"/>
+    </div>
+    <div class="form-group">
+      <label>Security Question</label>
+      <select id="setupSecQ">
+        <option value="">— Select a question —</option>
+        <option>What is your mother's maiden name?</option>
+        <option>What was the name of your first pet?</option>
+        <option>What was the name of your primary school?</option>
+        <option>What is your favourite book?</option>
+        <option>What city were you born in?</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Security Answer</label>
+      <input type="text" id="setupSecA" placeholder="Your answer (case-sensitive)"/>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="doSetup()">Create Account</button>
+  </div>
+</div>
+
+<!-- ======= FORGOT PASSWORD OVERLAY ======= -->
+<div id="forgotOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);align-items:center;justify-content:center;z-index:9999">
+  <div class="login-card" style="position:relative;max-height:90vh;overflow-y:auto">
+    <button onclick="closeForgotModal()" style="position:absolute;top:14px;right:18px;background:none;border:none;font-size:22px;cursor:pointer;color:#888;line-height:1">×</button>
+    <div class="login-logo" style="margin-bottom:18px">
+      <h1 style="font-size:20px">🔑 Reset Password</h1>
+    </div>
+    <div class="login-error" id="forgotError"></div>
+    <div id="forgotStep1">
+      <p style="font-size:13px;color:#666;margin-bottom:18px">Enter your username to retrieve your security question.</p>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="forgotUser" placeholder="Enter your username"/>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="forgotStep1()">Continue</button>
+    </div>
+    <div id="forgotStep2" style="display:none">
+      <div style="background:#ebf8ff;border-radius:8px;padding:14px;margin-bottom:16px;border-left:3px solid #2d6a9f">
+        <p style="font-size:11px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Security Question</p>
+        <p id="forgotSecQ" style="font-size:14px;color:#1a3c5e;font-weight:600"></p>
+      </div>
+      <div class="form-group">
+        <label>Your Answer</label>
+        <input type="text" id="forgotSecA" placeholder="Enter your answer (case-sensitive)"/>
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="forgotNewPass" placeholder="Enter new password (min 6 chars)"/>
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="forgotNewPass2" placeholder="Re-enter new password"/>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doResetPassword()">Reset Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= APP ======= -->
+<div id="appPage" style="display:none">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>🏠 RentEase</h2>
+      <p>Rental Management</p>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-item active" id="nav-dashboard" onclick="showView('dashboard')">
+        <span class="nav-icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" id="nav-tenants" onclick="showView('tenants')">
+        <span class="nav-icon">👥</span> Tenants
+      </div>
+      <div class="nav-item" id="nav-payments" onclick="showView('payments')">
+        <span class="nav-icon">💳</span> Payment Records
+      </div>
+      <div class="nav-item" id="nav-expenses" onclick="showView('expenses')">
+        <span class="nav-icon">📋</span> Expenses
+      </div>
+      <hr class="sidebar-divider"/>
+      <!-- hidden file input for import -->
+      <input type="file" id="importFileInput" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)"/>
+      <div class="nav-item" onclick="document.getElementById('importFileInput').click()">
+        <span class="nav-icon">📂</span> Import Excel DB
+      </div>
+      <div class="nav-item" onclick="exportExcel()">
+        <span class="nav-icon">💾</span> Export Excel DB
+      </div>
+      <hr class="sidebar-divider"/>
+      <div class="nav-item" onclick="openYearReportModal()">
+        <span class="nav-icon">📅</span> Yearly Report
+      </div>
+      <div class="nav-item" onclick="openSettings()">
+        <span class="nav-icon">⚙</span> Settings
+      </div>
+    </div>
+    <div class="db-status"><div class="db-dot"></div><span id="dbStatusText">Database ready</span></div>
+    <div class="sidebar-footer">
+      <div class="nav-item" onclick="doLogout()" style="border-left:none;padding-left:0">
+        <span class="nav-icon">🚪</span> Logout
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content">
+
+    <!-- DASHBOARD -->
+    <div id="dashboardView" class="view active">
+      <div class="page-header">
+        <div class="page-title">
+          <h2>Dashboard</h2>
+          <p>Monthly rent collection overview</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-excel" onclick="exportExcel()">⬇ Export Excel</button>
+          <button class="btn btn-outline" onclick="generateMonthlyReport()">📄 Monthly Report</button>
+          <button class="btn btn-danger" onclick="clearMonth()">🗑 Clear Month</button>
+          <button class="btn btn-primary" onclick="openInitiateModal()">+ Initiate New Month</button>
+        </div>
+      </div>
+      <div class="stats-grid" id="dashStats"></div>
+      <div class="month-bar">
+        <label>Month:</label>
+        <input type="month" id="dashMonth" onchange="renderDashboard()"/>
+      </div>
+      <div class="table-container">
+        <div class="table-header">
+          <h3>Payment Status</h3>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-danger btn-sm" id="clearSelectedBtn" onclick="clearSelected()" style="display:none">🗑 Clear Selected</button>
+            <input class="search-bar" type="text" placeholder="Search house / tenant…" oninput="renderDashTable()" id="dashSearch"/>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th style="width:38px;text-align:center"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" title="Select all"/></th>
+              <th>House ID</th><th>Tenant Name</th>
+              <th>Rent (₹)</th><th>Maintenance (₹)</th><th>Water Bill (₹)</th><th>Total (₹)</th>
+              <th>Status</th><th>Paid Date</th><th>Balance (₹)</th><th>Receipt</th><th>Action</th>
+            </tr></thead>
+            <tbody id="dashBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="dashEmpty" style="display:none">No records for this month. Click "Initiate New Month" to create payment records.</div>
+      </div>
+
+      <!-- DASHBOARD EXPENSES SECTION -->
+      <div class="table-container" style="margin-top:22px">
+        <div class="table-header">
+          <h3>Expenses</h3>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-danger btn-sm" id="clearExpSelectedBtn" onclick="clearExpSelected()" style="display:none">🗑 Clear Selected</button>
+            <button class="btn btn-primary btn-sm" onclick="openDashAddModal()">+ Add Expense</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th style="width:38px;text-align:center"><input type="checkbox" id="expSelectAll" onchange="toggleExpSelectAll(this)" title="Select all"/></th>
+              <th>Building ID</th><th>Category of Bill</th><th>Consumer No.</th>
+              <th>Amount (₹)</th><th>Status</th><th>Payment Date</th><th>Action</th>
+            </tr></thead>
+            <tbody id="dashExpBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="dashExpEmpty" style="display:none">No expenses recorded for this month. Click "+ Add Expense" to add one.</div>
+      </div>
+    </div>
+
+    <!-- TENANTS -->
+    <div id="tenantsView" class="view">
+      <div class="page-header">
+        <div class="page-title"><h2>Tenants</h2><p>Manage all tenant details</p></div>
+        <div class="header-actions">
+          <button class="btn btn-excel" onclick="exportExcel()">⬇ Export Excel</button>
+          <button class="btn btn-primary" onclick="openTenantModal(null)">+ Add New Tenant</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <div class="table-header">
+          <h3>All Tenants</h3>
+          <input class="search-bar" type="text" placeholder="Search…" oninput="renderTenantsTable()" id="tenantSearch"/>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>Tenant ID</th><th>House ID</th><th>Name</th>
+              <th>Contact</th><th>Rent (₹)</th><th>Occupied On</th>
+              <th>Rent Cycle</th><th>Status</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="tenantBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="tenantEmpty" style="display:none">No tenants found. Add your first tenant.</div>
+      </div>
+    </div>
+
+    <!-- PAYMENT RECORDS -->
+    <div id="paymentsView" class="view">
+      <div class="page-header">
+        <div class="page-title"><h2>Payment Records</h2><p>Complete rental payment history</p></div>
+        <button class="btn btn-excel" onclick="exportExcel()">⬇ Export Excel</button>
+      </div>
+      <div class="table-container">
+        <div class="table-header">
+          <h3>All Records</h3>
+          <input class="search-bar" type="text" placeholder="Search…" oninput="renderPaymentsTable()" id="paySearch"/>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>Tenant ID</th><th>House ID</th><th>Month</th>
+              <th>Rent Amount (₹)</th><th>Payment Status</th><th>Payment Date</th>
+            </tr></thead>
+            <tbody id="payBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="payEmpty" style="display:none">No payment records yet.</div>
+      </div>
+    </div>
+
+    <!-- EXPENSES -->
+    <div id="expensesView" class="view">
+      <div class="page-header">
+        <div class="page-title"><h2>Expenses</h2><p>Monthly building expense records</p></div>
+        <div class="header-actions">
+          <button class="btn btn-excel" onclick="exportExcel()">⬇ Export Excel</button>
+          <button class="btn btn-primary" onclick="openExpenseModal(null)">+ Add Expense</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <div class="table-header">
+          <h3>Expense Records</h3>
+          <input class="search-bar" type="text" placeholder="Search…" oninput="renderExpensesTable()" id="expSearch"/>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>Building ID</th><th>Category of Bill</th><th>Consumer No.</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="expBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="expEmpty" style="display:none">No expenses for this month. Click "+ Add Expense" to add one.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ======= MODAL: Initiate Month ======= -->
+<div class="modal-overlay" id="initiateModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3>Initiate New Month</h3>
+      <button class="close-btn" onclick="closeModal('initiateModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:#555;margin-bottom:18px">
+        Creates <strong>Pending</strong> payment records for all active tenants.
+        Existing records for the month are skipped.
+      </p>
+      <div class="form-group">
+        <label>Select Month</label>
+        <input type="month" id="initMonth" style="width:100%;padding:10px 13px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none"/>
+      </div>
+      <div class="warn-text" id="initWarn"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('initiateModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="initiateMonth()">Initiate</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= MODAL: Add/Edit Tenant ======= -->
+<div class="modal-overlay" id="tenantModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="tenantModalTitle">Add New Tenant</h3>
+      <button class="close-btn" onclick="closeModal('tenantModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Tenant ID *</label><input type="text" id="f_tenantId" placeholder="e.g. T001"/></div>
+        <div class="form-group"><label>House ID *</label><input type="text" id="f_houseId" placeholder="e.g. H001"/></div>
+        <div class="form-group full"><label>House Address</label><input type="text" id="f_houseAddress" placeholder="Full address of the house"/></div>
+        <div class="form-group"><label>First Name *</label><input type="text" id="f_firstName" placeholder="First name"/></div>
+        <div class="form-group"><label>Last Name</label><input type="text" id="f_lastName" placeholder="Last name"/></div>
+        <div class="form-group"><label>Contact Number</label><input type="tel" id="f_contact" placeholder="10-digit mobile"/></div>
+        <div class="form-group"><label>Aadhaar Number</label><input type="text" id="f_aadhaar" placeholder="12-digit Aadhaar"/></div>
+        <div class="form-group full"><label>Aadhaar Address</label><input type="text" id="f_aadhaarAddr" placeholder="Address as on Aadhaar"/></div>
+        <div class="form-group"><label>Rent Amount (₹) *</label><input type="number" id="f_rent" placeholder="Monthly rent" min="0"/></div>
+        <div class="form-group"><label>Deposit Amount (₹)</label><input type="number" id="f_deposit" placeholder="Security deposit" min="0"/></div>
+        <div class="form-group"><label>Deposit Date</label><input type="date" id="f_depositDate"/></div>
+        <div class="form-group"><label>Occupied Date</label><input type="date" id="f_occupiedDate"/></div>
+        <div class="form-group"><label>Vacated On</label><input type="date" id="f_vacatedDate"/></div>
+        <div class="form-group"><label>Number of Keys Given</label><input type="number" id="f_keys" placeholder="e.g. 2" min="0"/></div>
+        <div class="form-group"><label>Agreement Status</label>
+          <select id="f_agreement">
+            <option value="">— Select —</option>
+            <option>Signed</option><option>Pending</option>
+            <option>Expired</option><option>Not Required</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Active Status</label>
+          <select id="f_status"><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+        </div>
+        <div class="form-group" style="background:#f0f7ff;border-radius:8px;padding:14px;border:1.5px solid #bee3f8">
+          <label style="color:#2c5282">💧 Water Unit Cost (₹ per unit)</label>
+          <input type="number" id="f_waterRate" placeholder="e.g. 5.00" min="0" step="0.5" style="margin-top:6px"/>
+          <p style="font-size:11px;color:#718096;margin-top:6px">Auto-calculates water bill each month. Overrides global default.</p>
+        </div>
+        <div class="form-group" style="background:#fff7ed;border-radius:8px;padding:14px;border:1.5px solid #fbd38d">
+          <label style="color:#744210">🔧 Maintenance Cost (₹ per month)</label>
+          <input type="number" id="f_maintenanceCost" placeholder="e.g. 500" min="0" step="50" style="margin-top:6px"/>
+          <p style="font-size:11px;color:#718096;margin-top:6px">Fixed amount added to this tenant's total automatically every month.</p>
+        </div>
+        <div class="form-group" style="background:#f0fff4;border-radius:8px;padding:14px;border:1.5px solid #9ae6b4">
+          <label style="color:#276749">📅 Rent Cycle</label>
+          <input type="text" id="f_rentCycle" placeholder="e.g. 1st of every month" style="margin-top:6px"/>
+          <p style="font-size:11px;color:#718096;margin-top:6px">When rent is due each month for this tenant.</p>
+        </div>
+      </div>
+      <div class="warn-text" id="tenantWarn"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('tenantModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTenant()">Save Tenant</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= MODAL: View Tenant ======= -->
+<div class="modal-overlay" id="viewTenantModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Tenant Details</h3>
+      <button class="close-btn" onclick="closeModal('viewTenantModal')">×</button>
+    </div>
+    <div class="modal-body" id="viewTenantBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('viewTenantModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= MODAL: Update Payment ======= -->
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Update Payment</h3>
+      <button class="close-btn" onclick="closeModal('paymentModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-box">
+        <strong id="pm_name"></strong><br/>
+        <span>House: <span id="pm_house"></span> &nbsp;|&nbsp; Month: <span id="pm_month"></span></span>
+      </div>
+      <div class="form-grid">
+
+        <!-- Rent + Maintenance -->
+        <div class="form-group"><label>Rent Amount (₹)</label><input type="number" id="pm_rent" min="0" oninput="pmRecalc()"/></div>
+        <div class="form-group"><label>Maintenance (₹)</label><input type="number" id="pm_maintenance" min="0" oninput="pmRecalc()"/></div>
+
+        <!-- Water meter reading -->
+        <div class="form-section">💧 Water Meter Reading</div>
+        <div class="form-group">
+          <label>Previous Reading (units)</label>
+          <input type="number" id="pm_prevReading" readonly/>
+        </div>
+        <div class="form-group">
+          <label>Current Reading (units) *</label>
+          <input type="number" id="pm_currReading" placeholder="Enter this month's reading" min="0" oninput="pmRecalc()"/>
+        </div>
+        <div class="form-group">
+          <label>Units Consumed</label>
+          <input type="number" id="pm_units" readonly/>
+        </div>
+        <div class="form-group">
+          <label>Rate per Unit (₹)</label>
+          <input type="number" id="pm_rate" placeholder="e.g. 5" min="0" step="0.5" oninput="pmRecalc()"/>
+        </div>
+        <div class="form-group full">
+          <label>Water Bill (₹) — auto-calculated from reading</label>
+          <input type="number" id="pm_water" readonly/>
+        </div>
+
+        <!-- Payment -->
+        <div class="form-section">💳 Payment</div>
+        <div class="form-group"><label>Total Amount (₹)</label><input type="number" id="pm_total" readonly/></div>
+        <div class="form-group"><label>Payment Status</label>
+          <select id="pm_status" onchange="pmRecalc()">
+            <option>Pending</option><option>Paid</option><option>Partial</option><option>Informed</option>
+          </select>
+        </div>
+        <div class="form-group" id="pm_paidAmtGroup" style="display:none">
+          <label>Amount Paid (₹)</label>
+          <input type="number" id="pm_paidAmt" placeholder="0" min="0" oninput="pmRecalc()"/>
+        </div>
+        <div class="form-group"><label>Payment Date</label><input type="date" id="pm_date"/></div>
+
+      </div>
+      <div id="pm_balRow" style="display:none;margin-top:4px;font-size:13px;font-weight:700;color:#e53e3e"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('paymentModal')">Cancel</button>
+      <button class="btn btn-success" onclick="savePaymentUpdate()">Save Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= MODAL: Dashboard Add/Edit Expense ======= -->
+<div class="modal-overlay" id="dashFullModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3 id="dashFullModalTitle">Add Expense</h3>
+      <button class="close-btn" onclick="closeModal('dashFullModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Building ID *</label>
+          <input type="text" id="df_buildingId" placeholder="e.g. B001"/>
+        </div>
+        <div class="form-group">
+          <label>Category of Bill *</label>
+          <select id="df_category">
+            <option value="">— Select —</option>
+            <option>Water Bill</option>
+            <option>Electricity Bill</option>
+            <option>Maintenance</option>
+            <option>Painting</option>
+            <option>Tanker</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Consumer No.</label>
+          <input type="text" id="df_consumerNo" placeholder="Consumer / account number"/>
+        </div>
+        <div class="form-group">
+          <label>Amount (₹) *</label>
+          <input type="number" id="df_amount" placeholder="0" min="0"/>
+        </div>
+        <div class="form-group" id="df_statusGroup" style="display:none">
+          <label>Status</label>
+          <select id="df_status">
+            <option>Pending</option>
+            <option>Paid</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Payment Date</label>
+          <input type="date" id="df_payDate"/>
+        </div>
+      </div>
+      <div class="warn-text" id="dashFullWarn"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('dashFullModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDashFull()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= MODAL: Yearly Report ======= -->
+<div class="modal-overlay" id="yearReportModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3>Yearly Report</h3>
+      <button class="close-btn" onclick="closeModal('yearReportModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Select Year</label>
+        <select id="yr_year" style="width:100%;padding:10px 13px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('yearReportModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="generateYearlyReport()">Generate PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= MODAL: Add/Edit Expense ======= -->
+<div class="modal-overlay" id="expenseModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3 id="expenseModalTitle">Add Expense</h3>
+      <button class="close-btn" onclick="closeModal('expenseModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Building ID *</label>
+          <input type="text" id="ex_buildingId" placeholder="e.g. B001"/>
+        </div>
+        <div class="form-group">
+          <label>Category of Bill *</label>
+          <select id="ex_category">
+            <option value="">— Select —</option>
+            <option>Water Bill</option>
+            <option>Electricity Bill</option>
+            <option>Maintenance</option>
+            <option>Painting</option>
+            <option>Tanker</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Consumer No.</label>
+          <input type="text" id="ex_consumerNo" placeholder="Consumer / account number"/>
+        </div>
+        <div class="form-group">
+          <label>Amount (₹) *</label>
+          <input type="number" id="ex_amount" placeholder="0" min="0"/>
+        </div>
+      </div>
+      <div class="warn-text" id="expenseWarn"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('expenseModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveExpense()">Save Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= MODAL: Settings ======= -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3>⚙ Settings</h3>
+      <button class="close-btn" onclick="closeModal('settingsModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Default Water Rate (₹ per unit)</label>
+        <input type="number" id="set_wrate" placeholder="e.g. 5" min="0" step="0.5"/>
+        <p style="font-size:11px;color:#999;margin-top:6px">Used automatically when a new month is initiated. You can still override per payment.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('settingsModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  EXCEL WORKBOOK LAYER  (SheetJS — replaces localStorage)
+// ============================================================
+
+// Column definitions: [jsField, Excel column header]
+const T_FIELDS = [
+  ['tenantId','Tenant ID'],['houseId','House ID'],['houseAddress','House Address'],
+  ['firstName','First Name'],['lastName','Last Name'],['contact','Contact Number'],
+  ['aadhaar','Aadhaar Number'],['aadhaarAddr','Aadhaar Address'],
+  ['rent','Rent Amount'],['deposit','Deposit Amount'],
+  ['depositDate','Deposit Date'],['occupiedDate','Occupied Date'],
+  ['vacatedDate','Vacated On'],['keys','Keys Given'],
+  ['agreement','Agreement Status'],['status','Active Status'],
+  ['waterRate','Water Rate Per Unit'],['maintenanceCost','Maintenance Cost'],
+  ['rentCycle','Rent Cycle']
+];
+
+const P_FIELDS = [
+  ['id','Payment ID'],['tenantId','Tenant ID'],['houseId','House ID'],
+  ['month','Month'],['rent','Rent Amount'],['water','Water Bill'],
+  ['total','Total Amount'],['payStatus','Payment Status'],
+  ['payDate','Payment Date'],['paidAmt','Amount Paid'],
+  ['prevReading','Prev Reading'],['currReading','Curr Reading'],
+  ['unitsConsumed','Units Consumed'],['waterRate','Water Rate'],
+  ['maintenance','Maintenance']
+];
+
+const E_FIELDS = [
+  ['id','Expense ID'],['buildingId','Building ID'],
+  ['category','Category'],['consumerNo','Consumer No.'],
+  ['amount','Amount'],['status','Status']
+];
+
+const ME_FIELDS = [
+  ['id','Override ID'],['expenseId','Expense ID'],['month','Month'],
+  ['buildingId','Building ID'],['category','Category'],['consumerNo','Consumer No.'],
+  ['amount','Amount'],['status','Status'],['payDate','Payment Date']
+];
+
+const U_FIELDS = [
+  ['username','Username'],['password','Password'],
+  ['secQuestion','Security Question'],['secAnswer','Security Answer']
+];
+
+let WB = null; // active SheetJS workbook
+
+/* ---- init / load / save ---- */
+function initWorkbook() {
+  WB = XLSX.utils.book_new();
+  appendEmptySheet('Tenants',       T_FIELDS);
+  appendEmptySheet('Payments',      P_FIELDS);
+  appendEmptySheet('Expenses',      E_FIELDS);
+  appendEmptySheet('MonthExpenses', ME_FIELDS);
+  appendEmptySheet('Users',         U_FIELDS);
+  saveWB();
+}
+
+function appendEmptySheet(name, fields) {
+  const ws = XLSX.utils.aoa_to_sheet([fields.map(([,c])=>c)]);
+  setColWidths(ws, fields.map(([,c])=>c), []);
+  XLSX.utils.book_append_sheet(WB, ws, name);
+}
+
+function loadWB() {
+  const b64 = localStorage.getItem('rms_excel');
+  if (b64) {
+    try { WB = XLSX.read(b64, {type:'base64', cellDates:false}); setStatus('Database loaded'); }
+    catch(e) { console.warn('Corrupt DB, reinitialising', e); initWorkbook(); }
+    // ensure required sheets exist
+    if (!WB.Sheets['Tenants'])       appendEmptySheet('Tenants',       T_FIELDS);
+    if (!WB.Sheets['Payments'])      appendEmptySheet('Payments',      P_FIELDS);
+    if (!WB.Sheets['Expenses'])      appendEmptySheet('Expenses',      E_FIELDS);
+    if (!WB.Sheets['MonthExpenses']) appendEmptySheet('MonthExpenses', ME_FIELDS);
+    if (!WB.Sheets['Users'])         appendEmptySheet('Users',         U_FIELDS);
+  } else {
+    initWorkbook();
+    setStatus('New database created');
+  }
+}
+
+function saveWB() {
+  try {
+    const b64 = XLSX.write(WB, {bookType:'xlsx', type:'base64'});
+    localStorage.setItem('rms_excel', b64);
+    setStatus('Saved · ' + new Date().toLocaleTimeString());
+  } catch(e) { setStatus('⚠ Save failed: ' + e.message); }
+}
+
+/* ---- export / import ---- */
+function exportExcel() {
+  XLSX.writeFile(WB, 'RentEase_Database.xlsx');
+  setStatus('Exported · ' + new Date().toLocaleTimeString());
+}
+
+function importExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      WB = XLSX.read(new Uint8Array(e.target.result), {type:'array', cellDates:false});
+      if (!WB.Sheets['Tenants'])       appendEmptySheet('Tenants',       T_FIELDS);
+      if (!WB.Sheets['Payments'])      appendEmptySheet('Payments',      P_FIELDS);
+      if (!WB.Sheets['Expenses'])      appendEmptySheet('Expenses',      E_FIELDS);
+      if (!WB.Sheets['MonthExpenses']) appendEmptySheet('MonthExpenses', ME_FIELDS);
+      saveWB();
+      renderDashboard(); renderTenantsTable(); renderPaymentsTable();
+      setStatus('Imported: ' + file.name);
+      alert('✅ Database imported from: ' + file.name);
+    } catch(err) { alert('❌ Failed to import: ' + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+  event.target.value = '';
+}
+
+/* ---- sheet helpers ---- */
+function setColWidths(ws, headers, rows) {
+  ws['!cols'] = headers.map((h, i) => ({
+    wch: Math.max(h.length + 2, ...rows.map(r => String(r[i]||'').length), 10)
+  }));
+}
+
+function readSheet(sheetName, fields) {
+  const ws = WB.Sheets[sheetName];
+  if (!ws) return [];
+  return XLSX.utils.sheet_to_json(ws, {defval:''}).map(row => {
+    const obj = {};
+    fields.forEach(([f, col]) => { obj[f] = row[col] !== undefined ? row[col] : ''; });
+    return obj;
+  });
+}
+
+function writeSheet(sheetName, records, fields) {
+  const headers = fields.map(([,c]) => c);
+  const rows    = records.map(rec => fields.map(([f]) => rec[f] !== undefined ? rec[f] : ''));
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  setColWidths(ws, headers, rows);
+  WB.Sheets[sheetName] = ws;
+  if (!WB.SheetNames.includes(sheetName)) WB.SheetNames.push(sheetName);
+  saveWB();
+}
+
+/* ---- public data API ---- */
+const getTenants      = () => readSheet('Tenants',       T_FIELDS);
+const getPayments     = () => readSheet('Payments',      P_FIELDS);
+const getExpenses     = () => readSheet('Expenses',      E_FIELDS);
+const getMonthExp     = () => readSheet('MonthExpenses', ME_FIELDS);
+const setTenants      = ts  => writeSheet('Tenants',       ts,  T_FIELDS);
+const setPayments     = ps  => writeSheet('Payments',      ps,  P_FIELDS);
+const setExpenses     = es  => writeSheet('Expenses',      es,  E_FIELDS);
+const setMonthExp     = mes => writeSheet('MonthExpenses', mes, ME_FIELDS);
+const getUsers        = ()  => readSheet('Users',         U_FIELDS);
+const setUsers        = us  => writeSheet('Users',        us,  U_FIELDS);
+
+// ============================================================
+//  AUTH
+// ============================================================
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const users = getUsers();
+  if (users.length && users[0].username === u && users[0].password === p) {
+    sessionStorage.setItem('rms_a','1');
+    document.getElementById('loginError').style.display = 'none';
+    showApp();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('rms_a');
+  document.getElementById('appPage').style.display   = 'none';
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+}
+
+function showApp() {
+  document.getElementById('loginPage').style.display  = 'none';
+  document.getElementById('setupPage').style.display  = 'none';
+  document.getElementById('appPage').style.display    = 'flex';
+  showView('dashboard');
+}
+
+function showSetup() {
+  document.getElementById('loginPage').style.display  = 'none';
+  document.getElementById('setupPage').style.display  = 'flex';
+  document.getElementById('appPage').style.display    = 'none';
+}
+
+function doSetup() {
+  const u  = document.getElementById('setupUser').value.trim();
+  const p  = document.getElementById('setupPass').value;
+  const p2 = document.getElementById('setupPass2').value;
+  const q  = document.getElementById('setupSecQ').value;
+  const a  = document.getElementById('setupSecA').value.trim();
+  const err = document.getElementById('setupError');
+  if (!u || !p || !p2 || !q || !a) { err.textContent='All fields are required.'; err.style.display='block'; return; }
+  if (p !== p2) { err.textContent='Passwords do not match.'; err.style.display='block'; return; }
+  if (p.length < 6) { err.textContent='Password must be at least 6 characters.'; err.style.display='block'; return; }
+  setUsers([{ username: u, password: p, secQuestion: q, secAnswer: a }]);
+  sessionStorage.setItem('rms_a','1');
+  err.style.display = 'none';
+  showApp();
+}
+
+function openForgotModal() {
+  document.getElementById('forgotUser').value      = '';
+  document.getElementById('forgotSecA').value      = '';
+  document.getElementById('forgotNewPass').value   = '';
+  document.getElementById('forgotNewPass2').value  = '';
+  document.getElementById('forgotError').style.display = 'none';
+  document.getElementById('forgotStep1').style.display = 'block';
+  document.getElementById('forgotStep2').style.display = 'none';
+  document.getElementById('forgotOverlay').style.display = 'flex';
+}
+
+function closeForgotModal() {
+  document.getElementById('forgotOverlay').style.display = 'none';
+}
+
+function forgotStep1() {
+  const u   = document.getElementById('forgotUser').value.trim();
+  const err = document.getElementById('forgotError');
+  if (!u) { err.textContent='Please enter your username.'; err.style.display='block'; return; }
+  const usr = getUsers().find(x => x.username === u);
+  if (!usr) { err.textContent='Username not found.'; err.style.display='block'; return; }
+  document.getElementById('forgotSecQ').textContent    = usr.secQuestion;
+  document.getElementById('forgotError').style.display = 'none';
+  document.getElementById('forgotStep1').style.display = 'none';
+  document.getElementById('forgotStep2').style.display = 'block';
+}
+
+function doResetPassword() {
+  const u   = document.getElementById('forgotUser').value.trim();
+  const a   = document.getElementById('forgotSecA').value.trim();
+  const np  = document.getElementById('forgotNewPass').value;
+  const np2 = document.getElementById('forgotNewPass2').value;
+  const err = document.getElementById('forgotError');
+  const users = getUsers();
+  const idx   = users.findIndex(x => x.username === u);
+  if (idx < 0) { err.textContent='User not found.'; err.style.display='block'; return; }
+  if (users[idx].secAnswer !== a) { err.textContent='Incorrect answer to security question.'; err.style.display='block'; return; }
+  if (!np) { err.textContent='Please enter a new password.'; err.style.display='block'; return; }
+  if (np !== np2) { err.textContent='Passwords do not match.'; err.style.display='block'; return; }
+  if (np.length < 6) { err.textContent='Password must be at least 6 characters.'; err.style.display='block'; return; }
+  users[idx].password = np;
+  setUsers(users);
+  closeForgotModal();
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#48bb78;color:#fff;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
+  toast.textContent = '✓ Password reset successfully. Please log in.';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+let _editTid = null, _editPid = null;
+
+window.onload = () => {
+  // Wait for SheetJS to be available
+  if (typeof XLSX === 'undefined') {
+    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;flex-direction:column;gap:16px"><h2>⚠ SheetJS failed to load</h2><p>This app requires internet access on first load to download the Excel library.</p><p>Please check your internet connection and refresh the page.</p></div>';
+    return;
+  }
+  loadWB();
+  const m = new Date().toISOString().slice(0,7);
+  document.getElementById('dashMonth').value = m;
+  document.getElementById('initMonth').value  = m;
+  document.getElementById('loginPass').onkeydown = e => { if(e.key==='Enter') doLogin(); };
+  document.getElementById('setupPass2').onkeydown = e => { if(e.key==='Enter') doSetup(); };
+  const users = getUsers();
+  if (!users.length) { showSetup(); return; }
+  if (sessionStorage.getItem('rms_a') === '1') showApp();
+};
+
+// ============================================================
+//  NAVIGATION
+// ============================================================
+function showView(v) {
+  ['dashboard','tenants','payments','expenses'].forEach(x => {
+    document.getElementById(x+'View').classList.remove('active');
+    const n = document.getElementById('nav-'+x); if(n) n.classList.remove('active');
+  });
+  document.getElementById(v+'View').classList.add('active');
+  const n = document.getElementById('nav-'+v); if(n) n.classList.add('active');
+  if (v==='dashboard') renderDashboard();
+  if (v==='tenants')   renderTenantsTable();
+  if (v==='payments')  renderPaymentsTable();
+  if (v==='expenses')  renderExpensesView();
+}
+
+// ============================================================
+//  DASHBOARD
+// ============================================================
+function renderDashboard() { renderDashStats(); renderDashTable(); renderDashExpenses(); }
+
+function renderDashStats() {
+  const ts = getTenants(), ps = getPayments();
+  const m  = document.getElementById('dashMonth').value;
+  const mp = ps.filter(p => p.month === m);
+  const mes = getMonthExp();
+  const active    = ts.filter(t => t.status === 'Active').length;
+  const paid      = mp.filter(p => p.payStatus === 'Paid').length;
+  const pending   = mp.filter(p => p.payStatus !== 'Paid').length;
+  const collected = mp.filter(p => p.payStatus === 'Paid' || p.payStatus === 'Partial')
+    .reduce((s,p) => s + (p.payStatus === 'Paid' ? (parseFloat(p.total)||0) : (parseFloat(p.paidAmt)||0)), 0);
+  const totalWater = mp.reduce((s,p) => s + (parseFloat(p.water)||0), 0);
+  const mExp       = mes.filter(x => x.month === m);
+  const totalExp   = mExp.reduce((s,x) => s + (parseFloat(x.amount)||0), 0);
+  const expPending = mExp.filter(x => x.status === 'Pending').reduce((s,x) => s + (parseFloat(x.amount)||0), 0);
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card"><div class="lbl">Active Tenants</div><div class="val">${active}</div><div class="sub">of ${ts.length} total</div></div>
+    <div class="stat-card"><div class="lbl">Paid This Month</div><div class="val" style="color:#38a169">${paid}</div><div class="sub">of ${mp.length} records</div></div>
+    <div class="stat-card"><div class="lbl">Pending / Partial</div><div class="val" style="color:#dd6b20">${pending}</div><div class="sub">this month</div></div>
+    <div class="stat-card"><div class="lbl">Total Water Bill</div><div class="val" style="color:#2c5282">₹${fmt(totalWater)}</div><div class="sub">all tenants this month</div></div>
+    <div class="stat-card"><div class="lbl">Amount Collected</div><div class="val" style="color:#1a3c5e">₹${fmt(collected)}</div><div class="sub">paid + partial amounts</div></div>
+    <div class="stat-card"><div class="lbl">Total Expenses</div><div class="val" style="color:#c05621">₹${fmt(totalExp)}</div><div class="sub">this month</div></div>
+    <div class="stat-card"><div class="lbl">Expenses Pending</div><div class="val" style="color:#e53e3e">₹${fmt(expPending)}</div><div class="sub">yet to be paid</div></div>`;
+}
+
+function renderDashTable() {
+  renderDashStats();
+  const ts = getTenants(), ps = getPayments();
+  const m  = document.getElementById('dashMonth').value;
+  const q  = (document.getElementById('dashSearch')?.value||'').toLowerCase();
+  const rows = ps.filter(p => p.month === m).map(p => {
+    const t = ts.find(x => x.tenantId === p.tenantId) || {};
+    return {...p, _t:t};
+  }).filter(r => {
+    if (!q) return true;
+    const name = ((r._t.firstName||'')+' '+(r._t.lastName||'')).toLowerCase();
+    return r.houseId.toLowerCase().includes(q) || name.includes(q);
+  });
+
+  const tbody = document.getElementById('dashBody');
+  const empty = document.getElementById('dashEmpty');
+  if (!rows.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+
+  const BADGE = {Paid:'badge-paid', Pending:'badge-pending', Partial:'badge-partial', Informed:'badge-informed'};
+  tbody.innerHTML = rows.map(r => {
+    const name  = r._t.firstName ? `${r._t.firstName} ${r._t.lastName||''}`.trim() : r.tenantId;
+    const water = parseFloat(r.water)||0, total = parseFloat(r.total)||0;
+    const balance = r.payStatus==='Paid' ? 0 : r.payStatus==='Partial' ? (total-(parseFloat(r.paidAmt)||0)) : total;
+    const balCell = r.payStatus==='Paid'
+      ? '<span class="text-success">—</span>'
+      : `<span class="text-danger fw-bold">₹${fmt(balance)}</span>`;
+    return `<tr>
+      <td style="text-align:center"><input type="checkbox" class="row-check" data-id="${r.id}" onchange="onRowCheck()"/></td>
+      <td><strong>${r.houseId}</strong></td>
+      <td>${name}</td>
+      <td>₹${fmt(parseFloat(r.rent)||0)}</td>
+      <td>₹${fmt(parseFloat(r.maintenance)||0)}</td>
+      <td>₹${fmt(water)}</td>
+      <td><strong>₹${fmt(total)}</strong></td>
+      <td><span class="badge ${BADGE[r.payStatus]||'badge-pending'}">${r.payStatus}</span></td>
+      <td>${r.payDate||'—'}</td>
+      <td>${balCell}</td>
+      <td><button class="btn btn-excel btn-sm" onclick="downloadReceipt('${r.id}')">⬇ PDF</button></td>
+      <td><button class="btn btn-outline btn-sm" onclick="openPaymentModal('${r.id}')">Update</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+//  INITIATE MONTH
+// ============================================================
+function openInitiateModal() { warn('initWarn',''); openModal('initiateModal'); }
+
+function initiateMonth() {
+  const m = document.getElementById('initMonth').value;
+  if (!m) { warn('initWarn','Please select a month.'); return; }
+  const ts = getTenants().filter(t => t.status === 'Active');
+  if (!ts.length) { warn('initWarn','No active tenants found.'); return; }
+  const ps = getPayments();
+  const exists = ps.filter(p => p.month === m).map(p => p.tenantId);
+  const newTs  = ts.filter(t => !exists.includes(t.tenantId));
+  if (!newTs.length) { warn('initWarn',`All active tenants already have records for ${fmtMonth(m)}.`); return; }
+  newTs.forEach(t => {
+    const prevRec = ps
+      .filter(x => x.tenantId === t.tenantId && x.month < m)
+      .sort((a,b) => b.month.localeCompare(a.month))[0];
+    const prevReading = prevRec ? (parseFloat(prevRec.currReading)||0) : 0;
+    const waterRate   = parseFloat(t.waterRate)       || getWaterRate();
+    const maintenance = parseFloat(t.maintenanceCost) || 0;
+    const rent        = parseFloat(t.rent)            || 0;
+    ps.push({
+      id: 'P'+Date.now()+Math.random().toString(36).slice(2,6),
+      tenantId: t.tenantId, houseId: t.houseId, month: m,
+      rent, maintenance, water: 0, total: rent + maintenance,
+      payStatus: 'Pending', payDate: '', paidAmt: 0,
+      prevReading, currReading: 0, unitsConsumed: 0, waterRate
+    });
+  });
+  setPayments(ps);
+  // auto-create MonthExpenses for any master expenses not yet present for this month
+  const existingMeIds = getMonthExp().filter(x => x.month === m).map(x => x.expenseId);
+  const masterEs = getExpenses().filter(e => !existingMeIds.includes(e.id));
+  if (masterEs.length) {
+    const mes = getMonthExp();
+    masterEs.forEach(e => mes.push({
+      id: 'ME'+Date.now()+Math.random().toString(36).slice(2,6),
+      expenseId: e.id, month: m,
+      buildingId: e.buildingId, category: e.category, consumerNo: e.consumerNo||'',
+      amount: '0', status: 'Pending', payDate: ''
+    }));
+    setMonthExp(mes);
+  }
+  closeModal('initiateModal');
+  document.getElementById('dashMonth').value = m;
+  renderDashboard();
+  alert(`✅ Created ${newTs.length} payment record(s) for ${fmtMonth(m)}. Excel database updated.`);
+}
+
+// ============================================================
+//  PAYMENT UPDATE
+// ============================================================
+function openPaymentModal(id) {
+  const ps = getPayments();
+  const p  = ps.find(x => x.id === id); if (!p) return;
+  _editPid = id;
+  const t  = getTenants().find(x => x.tenantId === p.tenantId) || {};
+  document.getElementById('pm_name').textContent  = t.firstName ? `${t.firstName} ${t.lastName||''}`.trim() : p.tenantId;
+  document.getElementById('pm_house').textContent = p.houseId;
+  document.getElementById('pm_month').textContent = fmtMonth(p.month);
+  document.getElementById('pm_rent').value        = p.rent||0;
+  document.getElementById('pm_maintenance').value = p.maintenance||0;
+  document.getElementById('pm_prevReading').value = p.prevReading||0;
+  document.getElementById('pm_currReading').value = p.currReading||'';
+  document.getElementById('pm_units').value       = p.unitsConsumed||0;
+  document.getElementById('pm_rate').value        = p.waterRate ?? getWaterRate();
+  document.getElementById('pm_water').value       = p.water||0;
+  document.getElementById('pm_total').value       = p.total||0;
+  document.getElementById('pm_status').value      = p.payStatus||'Pending';
+  document.getElementById('pm_date').value        = p.payDate||'';
+  document.getElementById('pm_paidAmt').value     = p.paidAmt||0;
+  pmRecalc();
+  openModal('paymentModal');
+}
+
+function pmRecalc() {
+  const rent        = parseFloat(document.getElementById('pm_rent').value)||0;
+  const maintenance = parseFloat(document.getElementById('pm_maintenance').value)||0;
+  const prevR       = parseFloat(document.getElementById('pm_prevReading').value)||0;
+  const currR       = parseFloat(document.getElementById('pm_currReading').value);
+  const rate        = parseFloat(document.getElementById('pm_rate').value)||0;
+
+  // calculate water bill from readings if a current reading is entered
+  let water = 0, units = 0;
+  if (!isNaN(currR) && currR >= prevR) {
+    units = currR - prevR;
+    water = units * rate;
+  } else if (!isNaN(currR) && currR < prevR) {
+    document.getElementById('pm_units').value = '⚠ Check reading';
+    document.getElementById('pm_water').value = 0;
+    document.getElementById('pm_total').value = rent + maintenance;
+    return;
+  }
+
+  document.getElementById('pm_units').value = units;
+  document.getElementById('pm_water').value = water.toFixed(2);
+  const total = rent + maintenance + water;
+  document.getElementById('pm_total').value = total.toFixed(2);
+
+  const status = document.getElementById('pm_status').value;
+  const pag    = document.getElementById('pm_paidAmtGroup');
+  const br     = document.getElementById('pm_balRow');
+  if (status === 'Partial') {
+    pag.style.display = 'block';
+    const paid = parseFloat(document.getElementById('pm_paidAmt').value)||0;
+    br.style.display = 'block'; br.textContent = `Balance: ₹${fmt(total - paid)}`;
+  } else { pag.style.display='none'; br.style.display='none'; }
+}
+
+function savePaymentUpdate() {
+  const ps  = getPayments();
+  const idx = ps.findIndex(p => p.id === _editPid); if (idx===-1) return;
+  const rent         = parseFloat(document.getElementById('pm_rent').value)||0;
+  const maintenance  = parseFloat(document.getElementById('pm_maintenance').value)||0;
+  const prevReading  = parseFloat(document.getElementById('pm_prevReading').value)||0;
+  const currReading  = parseFloat(document.getElementById('pm_currReading').value)||0;
+  const unitsConsumed= parseFloat(document.getElementById('pm_units').value)||0;
+  const waterRate    = parseFloat(document.getElementById('pm_rate').value)||0;
+  const water        = parseFloat(document.getElementById('pm_water').value)||0;
+  const total        = parseFloat(document.getElementById('pm_total').value)||0;
+  const status       = document.getElementById('pm_status').value;
+  const paidAmt      = status==='Paid' ? total : status==='Partial' ? parseFloat(document.getElementById('pm_paidAmt').value)||0 : 0;
+  ps[idx] = {
+    ...ps[idx],
+    prevReading, currReading, unitsConsumed, waterRate,
+    maintenance, water, total, payStatus:status,
+    payDate: document.getElementById('pm_date').value,
+    paidAmt
+  };
+  setPayments(ps);
+  closeModal('paymentModal');
+  renderDashTable();
+}
+
+// ============================================================
+//  TENANTS
+// ============================================================
+const F_IDS = ['f_tenantId','f_houseId','f_houseAddress','f_firstName','f_lastName','f_contact','f_aadhaar','f_aadhaarAddr','f_rent','f_deposit','f_depositDate','f_occupiedDate','f_vacatedDate','f_keys','f_agreement','f_status','f_waterRate','f_maintenanceCost','f_rentCycle'];
+const F_KEYS = ['tenantId','houseId','houseAddress','firstName','lastName','contact','aadhaar','aadhaarAddr','rent','deposit','depositDate','occupiedDate','vacatedDate','keys','agreement','status','waterRate','maintenanceCost','rentCycle'];
+
+function openTenantModal(editId) {
+  _editTid = editId || null;
+  document.getElementById('tenantModalTitle').textContent = editId ? 'Edit Tenant' : 'Add New Tenant';
+  warn('tenantWarn','');
+  if (editId) {
+    const t = getTenants().find(x => x.tenantId === editId) || {};
+    F_KEYS.forEach((k,i) => { const el=document.getElementById(F_IDS[i]); if(el) el.value=t[k]||''; });
+    document.getElementById('f_tenantId').readOnly = true;
+    document.getElementById('f_tenantId').style.background = '#f5f7fa';
+  } else {
+    F_KEYS.forEach((k,i) => { const el=document.getElementById(F_IDS[i]); if(el) el.value=k==='status'?'Active':k==='rentCycle'?'1st of every month':''; });
+    document.getElementById('f_tenantId').readOnly = false;
+    document.getElementById('f_tenantId').style.background = '';
+  }
+  openModal('tenantModal');
+}
+
+function saveTenant() {
+  const data = {};
+  F_KEYS.forEach((k,i) => { const el=document.getElementById(F_IDS[i]); data[k]=el?el.value.trim():''; });
+  if (!data.tenantId)  { warn('tenantWarn','Tenant ID is required.'); return; }
+  if (!data.houseId)   { warn('tenantWarn','House ID is required.');  return; }
+  if (!data.firstName) { warn('tenantWarn','First name is required.'); return; }
+  const ts = getTenants();
+  if (_editTid) {
+    const idx = ts.findIndex(t => t.tenantId === _editTid);
+    if (idx !== -1) ts[idx] = {...ts[idx], ...data};
+  } else {
+    if (ts.find(t => t.tenantId === data.tenantId)) { warn('tenantWarn','Tenant ID already exists.'); return; }
+    ts.push(data);
+  }
+  setTenants(ts); // writes to Excel
+  closeModal('tenantModal');
+  renderTenantsTable();
+}
+
+function deleteTenant(id) {
+  if (!confirm('Delete this tenant? Payment records will be kept.')) return;
+  setTenants(getTenants().filter(t => t.tenantId !== id));
+  renderTenantsTable();
+}
+
+function renderTenantsTable() {
+  const ts = getTenants();
+  const q  = (document.getElementById('tenantSearch')?.value||'').toLowerCase();
+  const list = ts.filter(t => {
+    if (!q) return true;
+    const name = ((t.firstName||'')+' '+(t.lastName||'')).toLowerCase();
+    return name.includes(q)||t.tenantId.toLowerCase().includes(q)||t.houseId.toLowerCase().includes(q);
+  });
+  const tbody = document.getElementById('tenantBody');
+  const empty = document.getElementById('tenantEmpty');
+  if (!list.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = list.map(t => `<tr>
+    <td><strong>${t.tenantId}</strong></td>
+    <td>${t.houseId}</td>
+    <td>${t.firstName||''} ${t.lastName||''}</td>
+    <td>${t.contact||'—'}</td>
+    <td>₹${fmt(parseFloat(t.rent)||0)}</td>
+    <td>${t.occupiedDate||'—'}</td>
+    <td>${t.rentCycle||'1st of every month'}</td>
+    <td><span class="badge ${t.status==='Active'?'badge-active':'badge-inactive'}">${t.status}</span></td>
+    <td><div class="actions-row">
+      <button class="btn btn-outline btn-sm" onclick="viewTenant('${t.tenantId}')">View</button>
+      <button class="btn btn-outline btn-sm" onclick="openTenantModal('${t.tenantId}')">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteTenant('${t.tenantId}')">Delete</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+function viewTenant(id) {
+  const t = getTenants().find(x => x.tenantId === id); if (!t) return;
+  const row = (lbl, val) => `<div class="detail-row"><div class="detail-label">${lbl}</div><div class="detail-value">${val||'—'}</div></div>`;
+  const ABADGE = {Signed:'badge-signed',Expired:'badge-expired',Pending:'badge-pending'};
+  document.getElementById('viewTenantBody').innerHTML = `
+    ${row('Tenant ID',`<strong>${t.tenantId}</strong>`)}
+    ${row('House ID', t.houseId)} ${row('House Address', t.houseAddress)}
+    ${row('Full Name', `${t.firstName||''} ${t.lastName||''}`.trim())}
+    ${row('Contact Number', t.contact)} ${row('Aadhaar Number', t.aadhaar)}
+    ${row('Aadhaar Address', t.aadhaarAddr)}
+    ${row('Rent Amount', t.rent ? `₹${fmt(parseFloat(t.rent))}` : '')}
+    ${row('Deposit Amount', t.deposit ? `₹${fmt(parseFloat(t.deposit))}` : '')}
+    ${row('Deposit Date', t.depositDate)} ${row('Occupied Date', t.occupiedDate)}
+    ${row('Vacated On', t.vacatedDate)} ${row('Keys Given', t.keys)}
+    ${row('Agreement', t.agreement ? `<span class="badge ${ABADGE[t.agreement]||'badge-ghost'}">${t.agreement}</span>` : '')}
+    ${row('Active Status', `<span class="badge ${t.status==='Active'?'badge-active':'badge-inactive'}">${t.status}</span>`)}
+    ${row('💧 Water Rate', t.waterRate ? `₹${fmt(parseFloat(t.waterRate))} per unit` : `₹${fmt(getWaterRate())} per unit <span style="color:#aaa;font-size:11px">(global default)</span>`)}
+    ${row('🔧 Maintenance', t.maintenanceCost ? `₹${fmt(parseFloat(t.maintenanceCost))} per month` : '—')}
+    ${row('📅 Rent Cycle', t.rentCycle || '1st of every month')}`;
+  openModal('viewTenantModal');
+}
+
+// ============================================================
+//  PAYMENT RECORDS TABLE
+// ============================================================
+function renderPaymentsTable() {
+  const ps = getPayments();
+  const q  = (document.getElementById('paySearch')?.value||'').toLowerCase();
+  const list = ps.filter(p => {
+    if (!q) return true;
+    return p.tenantId.toLowerCase().includes(q)||p.houseId.toLowerCase().includes(q)||p.month.includes(q);
+  }).sort((a,b) => b.month.localeCompare(a.month)||a.houseId.localeCompare(b.houseId));
+  const tbody = document.getElementById('payBody');
+  const empty = document.getElementById('payEmpty');
+  if (!list.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  const BADGE = {Paid:'badge-paid',Pending:'badge-pending',Partial:'badge-partial'};
+  tbody.innerHTML = list.map(p => `<tr>
+    <td>${p.tenantId}</td><td>${p.houseId}</td>
+    <td>${fmtMonth(p.month)}</td>
+    <td>₹${fmt(parseFloat(p.rent)||0)}</td>
+    <td><span class="badge ${BADGE[p.payStatus]||'badge-pending'}">${p.payStatus}</span></td>
+    <td>${p.payDate||'—'}</td>
+  </tr>`).join('');
+}
+
+// ============================================================
+//  HELPERS
+// ============================================================
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function warn(id, msg)  { const el=document.getElementById(id); el.textContent=msg; el.style.display=msg?'block':'none'; }
+function fmt(n)         { return Number(n).toLocaleString('en-IN'); }
+function fmtMonth(m)    {
+  if (!m) return '';
+  const [y,mo] = m.split('-');
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+mo-1]+' '+y;
+}
+function setStatus(msg) {
+  const el = document.getElementById('dbStatusText'); if(el) el.textContent = msg;
+}
+
+// ============================================================
+//  DASHBOARD ROW SELECTION & CLEARING
+// ============================================================
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+  syncClearBtn();
+}
+
+function onRowCheck() {
+  const all     = document.querySelectorAll('.row-check');
+  const checked = document.querySelectorAll('.row-check:checked');
+  const sa = document.getElementById('selectAll');
+  if (sa) {
+    sa.indeterminate = checked.length > 0 && checked.length < all.length;
+    sa.checked = all.length > 0 && checked.length === all.length;
+  }
+  syncClearBtn();
+}
+
+function syncClearBtn() {
+  const count = document.querySelectorAll('.row-check:checked').length;
+  const btn   = document.getElementById('clearSelectedBtn');
+  if (!btn) return;
+  if (count > 0) {
+    btn.style.display  = 'inline-flex';
+    btn.textContent    = `🗑 Clear Selected (${count})`;
+  } else {
+    btn.style.display  = 'none';
+  }
+}
+
+function clearSelected() {
+  const ids = [...document.querySelectorAll('.row-check:checked')].map(c => c.dataset.id);
+  if (!ids.length) return;
+  if (!confirm(`Delete ${ids.length} selected record(s) for this month?\nThis cannot be undone.`)) return;
+  setPayments(getPayments().filter(p => !ids.includes(p.id)));
+  renderDashboard();
+}
+
+function generateMonthlyReport() {
+  const m = document.getElementById('dashMonth').value;
+  if (!m) { alert('Please select a month first.'); return; }
+  const ts  = getTenants();
+  const ps  = getPayments().filter(p => p.month === m);
+  const mes = getMonthExp().filter(x => x.month === m);
+
+  // stats
+  const active    = ts.filter(t => t.status === 'Active').length;
+  const paid      = ps.filter(p => p.payStatus === 'Paid').length;
+  const partial   = ps.filter(p => p.payStatus === 'Partial').length;
+  const pending   = ps.filter(p => p.payStatus === 'Pending').length;
+  const collected = ps.filter(p => p.payStatus === 'Paid' || p.payStatus === 'Partial')
+    .reduce((s,p) => s + (p.payStatus === 'Paid' ? (parseFloat(p.total)||0) : (parseFloat(p.paidAmt)||0)), 0);
+  const totalWater  = ps.reduce((s,p) => s + (parseFloat(p.water)||0), 0);
+  const totalExp    = mes.reduce((s,x) => s + (parseFloat(x.amount)||0), 0);
+  const expPending  = mes.filter(x => x.status === 'Pending').reduce((s,x) => s + (parseFloat(x.amount)||0), 0);
+
+  const statBox = (lbl, val) =>
+    `<div style="background:#f7fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;min-width:130px;text-align:center">
+       <div style="font-size:10px;font-weight:700;color:#718096;text-transform:uppercase;letter-spacing:.5px">${lbl}</div>
+       <div style="font-size:20px;font-weight:800;color:#1a3c5e;margin-top:4px">${val}</div>
+     </div>`;
+
+  const payRows = ps.map(r => {
+    const t       = ts.find(x => x.tenantId === r.tenantId) || {};
+    const name    = t.firstName ? `${t.firstName} ${t.lastName||''}`.trim() : r.tenantId;
+    const balance = (parseFloat(r.total)||0) - (parseFloat(r.paidAmt)||0);
+    const STATUS_COLOR = {Paid:'#38a169', Pending:'#dd6b20', Partial:'#3182ce'};
+    return `<tr>
+      <td>${r.houseId}</td>
+      <td>${name}</td>
+      <td style="text-align:right">₹${fmt(parseFloat(r.rent)||0)}</td>
+      <td style="text-align:right">₹${fmt(parseFloat(r.maintenance)||0)}</td>
+      <td style="text-align:right">₹${fmt(parseFloat(r.water)||0)}</td>
+      <td style="text-align:right"><strong>₹${fmt(parseFloat(r.total)||0)}</strong></td>
+      <td style="text-align:center;color:${STATUS_COLOR[r.payStatus]||'#718096'};font-weight:700">${r.payStatus}</td>
+      <td style="text-align:right">₹${fmt(parseFloat(r.paidAmt)||0)}</td>
+      <td style="text-align:right;color:${balance>0?'#e53e3e':'#38a169'}">₹${fmt(balance > 0 ? balance : 0)}</td>
+      <td>${r.payDate||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const expRows = mes.map(x => {
+    const STATUS_COLOR = {Paid:'#38a169', Pending:'#dd6b20'};
+    return `<tr>
+      <td>${x.buildingId}</td>
+      <td>${x.category}</td>
+      <td>${x.consumerNo||'—'}</td>
+      <td style="text-align:right">₹${fmt(parseFloat(x.amount)||0)}</td>
+      <td style="text-align:center;color:${STATUS_COLOR[x.status]||'#718096'};font-weight:700">${x.status}</td>
+      <td>${x.payDate||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const th = s => `<th style="background:#1a3c5e;color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase">${s}</th>`;
+  const thR = s => `<th style="background:#1a3c5e;color:#fff;padding:8px 10px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase">${s}</th>`;
+  const thC = s => `<th style="background:#1a3c5e;color:#fff;padding:8px 10px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase">${s}</th>`;
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>Monthly Report — ${fmtMonth(m)}</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#2d3748;padding:32px}
+    h1{font-size:22px;color:#1a3c5e;margin-bottom:4px}
+    .sub{color:#718096;font-size:13px;margin-bottom:24px}
+    .section-title{font-size:14px;font-weight:700;color:#1a3c5e;margin:28px 0 10px;border-bottom:2px solid #1a3c5e;padding-bottom:4px}
+    .stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+    table{width:100%;border-collapse:collapse;margin-bottom:8px}
+    td{padding:7px 10px;border-bottom:1px solid #e2e8f0;font-size:11px}
+    tr:last-child td{border-bottom:none}
+    tr:nth-child(even) td{background:#f7fafc}
+    .footer{margin-top:32px;font-size:10px;color:#aaa;text-align:center}
+    @media print{body{padding:16px}}
+  </style></head><body>
+  <h1>Monthly Report</h1>
+  <div class="sub">${fmtMonth(m)} &nbsp;·&nbsp; Generated on ${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})}</div>
+
+  <div class="section-title">Summary</div>
+  <div class="stats">
+    ${statBox('Active Tenants', active)}
+    ${statBox('Paid', paid)}
+    ${statBox('Partial', partial)}
+    ${statBox('Pending', pending)}
+    ${statBox('Amount Collected', '₹'+fmt(collected))}
+    ${statBox('Total Water Bill', '₹'+fmt(totalWater))}
+    ${statBox('Total Expenses', '₹'+fmt(totalExp))}
+    ${statBox('Expenses Pending', '₹'+fmt(expPending))}
+  </div>
+
+  <div class="section-title">Payment Status</div>
+  ${ps.length ? `<table>
+    <thead><tr>${th('House ID')}${th('Tenant')}${thR('Rent')}${thR('Maint.')}${thR('Water')}${thR('Total')}${thC('Status')}${thR('Paid Amt')}${thR('Balance')}${th('Paid Date')}</tr></thead>
+    <tbody>${payRows}</tbody>
+  </table>` : '<p style="color:#718096;font-style:italic">No payment records for this month.</p>'}
+
+  <div class="section-title">Expenses</div>
+  ${mes.length ? `<table>
+    <thead><tr>${th('Building ID')}${th('Category')}${th('Consumer No.')}${thR('Amount')}${thC('Status')}${th('Payment Date')}</tr></thead>
+    <tbody>${expRows}</tbody>
+  </table>` : '<p style="color:#718096;font-style:italic">No expenses recorded for this month.</p>'}
+
+  <div class="footer">RentEase · Monthly Report · ${fmtMonth(m)}</div>
+  <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`;
+
+  const w = window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
+function openYearReportModal() {
+  const sel = document.getElementById('yr_year');
+  const currentYear = new Date().getFullYear();
+  // populate years from payments/expenses data + current year
+  const allMonths = [...getPayments().map(p => p.month), ...getMonthExp().map(x => x.month)];
+  const years = [...new Set(allMonths.map(m => (m||'').slice(0,4)).filter(y => y.length===4))];
+  if (!years.includes(String(currentYear))) years.push(String(currentYear));
+  years.sort((a,b) => b-a);
+  sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+  openModal('yearReportModal');
+}
+
+function generateYearlyReport() {
+  const yr  = document.getElementById('yr_year').value;
+  if (!yr) return;
+  const ts  = getTenants();
+  const ps  = getPayments().filter(p => (p.month||'').startsWith(yr));
+  const mes = getMonthExp().filter(x => (x.month||'').startsWith(yr));
+
+  // Summary stats
+  const collected  = ps.filter(p => p.payStatus==='Paid'||p.payStatus==='Partial')
+    .reduce((s,p) => s + (p.payStatus==='Paid' ? (parseFloat(p.total)||0) : (parseFloat(p.paidAmt)||0)), 0);
+  const totalWater = ps.reduce((s,p) => s + (parseFloat(p.water)||0), 0);
+  const totalExp   = mes.reduce((s,x) => s + (parseFloat(x.amount)||0), 0);
+  const pendingAmt = ps.filter(p => p.payStatus==='Pending'||p.payStatus==='Partial'||p.payStatus==='Informed')
+    .reduce((s,p) => {
+      const balance = (parseFloat(p.total)||0) - (parseFloat(p.paidAmt)||0);
+      return s + (balance > 0 ? balance : 0);
+    }, 0);
+
+  const card = (lbl, val, color) =>
+    `<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:16px 20px;text-align:center;min-width:150px">
+       <div style="font-size:10px;font-weight:700;color:#718096;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${lbl}</div>
+       <div style="font-size:22px;font-weight:800;color:${color||'#1a3c5e'}">${val}</div>
+     </div>`;
+
+  const th  = s => `<th style="background:#1a3c5e;color:#fff;padding:9px 11px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase">${s}</th>`;
+  const thR = s => `<th style="background:#1a3c5e;color:#fff;padding:9px 11px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase">${s}</th>`;
+  const thC = s => `<th style="background:#1a3c5e;color:#fff;padding:9px 11px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase">${s}</th>`;
+
+  const STATUS_COLOR = {Paid:'#38a169',Pending:'#dd6b20',Partial:'#3182ce',Informed:'#553c9a'};
+
+  const payRows = ps.map(r => {
+    const t       = ts.find(x => x.tenantId === r.tenantId) || {};
+    const name    = t.firstName ? `${t.firstName} ${t.lastName||''}`.trim() : r.tenantId;
+    const balance = Math.max(0, (parseFloat(r.total)||0) - (parseFloat(r.paidAmt)||0));
+    return `<tr>
+      <td>${fmtMonth(r.month)}</td>
+      <td>${r.houseId}</td>
+      <td>${name}</td>
+      <td style="text-align:right">₹${fmt(parseFloat(r.rent)||0)}</td>
+      <td style="text-align:right">₹${fmt(parseFloat(r.maintenance)||0)}</td>
+      <td style="text-align:right">₹${fmt(parseFloat(r.water)||0)}</td>
+      <td style="text-align:right"><strong>₹${fmt(parseFloat(r.total)||0)}</strong></td>
+      <td style="text-align:center;color:${STATUS_COLOR[r.payStatus]||'#718096'};font-weight:700">${r.payStatus}</td>
+      <td style="text-align:right">₹${fmt(parseFloat(r.paidAmt)||0)}</td>
+      <td style="text-align:right;color:${balance>0?'#e53e3e':'#38a169'}">₹${fmt(balance)}</td>
+      <td>${r.payDate||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const expRows = mes.map(x => `<tr>
+    <td>${fmtMonth(x.month)}</td>
+    <td>${x.buildingId}</td>
+    <td>${x.category}</td>
+    <td>${x.consumerNo||'—'}</td>
+    <td style="text-align:right">₹${fmt(parseFloat(x.amount)||0)}</td>
+    <td style="text-align:center;color:${STATUS_COLOR[x.status]||'#718096'};font-weight:700">${x.status}</td>
+    <td>${x.payDate||'—'}</td>
+  </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>Yearly Report — ${yr}</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#2d3748;padding:32px}
+    h1{font-size:22px;color:#1a3c5e;margin-bottom:4px}
+    .sub{color:#718096;font-size:13px;margin-bottom:24px}
+    .cards{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+    .section-title{font-size:14px;font-weight:700;color:#1a3c5e;margin:28px 0 10px;border-bottom:2px solid #1a3c5e;padding-bottom:4px}
+    table{width:100%;border-collapse:collapse;margin-bottom:8px}
+    td{padding:7px 11px;border-bottom:1px solid #e2e8f0;font-size:11px}
+    tr:last-child td{border-bottom:none}
+    tr:nth-child(even) td{background:#f7fafc}
+    .footer{margin-top:32px;font-size:10px;color:#aaa;text-align:center}
+    @media print{body{padding:16px}}
+  </style></head><body>
+  <h1>Yearly Report — ${yr}</h1>
+  <div class="sub">Generated on ${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})}</div>
+
+  <div class="section-title">Annual Summary</div>
+  <div class="cards">
+    ${card('Total Collected', '₹'+fmt(collected), '#38a169')}
+    ${card('Total Water Bill', '₹'+fmt(totalWater), '#2c5282')}
+    ${card('Total Expenses', '₹'+fmt(totalExp), '#c05621')}
+    ${card('Total Pending', '₹'+fmt(pendingAmt), '#e53e3e')}
+  </div>
+
+  <div class="section-title">Payment Records — ${yr}</div>
+  ${ps.length ? `<table>
+    <thead><tr>${th('Month')}${th('House')}${th('Tenant')}${thR('Rent')}${thR('Maint.')}${thR('Water')}${thR('Total')}${thC('Status')}${thR('Paid')}${thR('Balance')}${th('Paid Date')}</tr></thead>
+    <tbody>${payRows}</tbody>
+  </table>` : '<p style="color:#718096;font-style:italic;margin-bottom:8px">No payment records for this year.</p>'}
+
+  <div class="section-title">Expenses — ${yr}</div>
+  ${mes.length ? `<table>
+    <thead><tr>${th('Month')}${th('Building')}${th('Category')}${th('Consumer No.')}${thR('Amount')}${thC('Status')}${th('Payment Date')}</tr></thead>
+    <tbody>${expRows}</tbody>
+  </table>` : '<p style="color:#718096;font-style:italic">No expenses recorded for this year.</p>'}
+
+  <div class="footer">RentEase · Yearly Report · ${yr}</div>
+  <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`;
+
+  closeModal('yearReportModal');
+  const w = window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
+function clearMonth() {
+  const m        = document.getElementById('dashMonth').value;
+  if (!m) { alert('Please select a month first.'); return; }
+  const pCount   = getPayments().filter(p => p.month === m).length;
+  const eCount   = getMonthExp().filter(x => x.month === m).length;
+  if (!pCount && !eCount) { alert(`No records found for ${fmtMonth(m)}.`); return; }
+  if (!confirm(`Delete ALL payment (${pCount}) and expense (${eCount}) record(s) for ${fmtMonth(m)}?\nThis cannot be undone.`)) return;
+  setPayments(getPayments().filter(p => p.month !== m));
+  setMonthExp(getMonthExp().filter(x => x.month !== m));
+  renderDashboard();
+}
+
+// ============================================================
+//  EXPENSES CHECKBOX SELECTION
+// ============================================================
+function toggleExpSelectAll(cb) {
+  document.querySelectorAll('.exp-check').forEach(c => c.checked = cb.checked);
+  syncExpClearBtn();
+}
+
+function onExpCheck() {
+  const all     = document.querySelectorAll('.exp-check');
+  const checked = document.querySelectorAll('.exp-check:checked');
+  const sa = document.getElementById('expSelectAll');
+  if (sa) {
+    sa.indeterminate = checked.length > 0 && checked.length < all.length;
+    sa.checked = all.length > 0 && checked.length === all.length;
+  }
+  syncExpClearBtn();
+}
+
+function syncExpClearBtn() {
+  const count = document.querySelectorAll('.exp-check:checked').length;
+  const btn   = document.getElementById('clearExpSelectedBtn');
+  if (!btn) return;
+  btn.style.display = count > 0 ? 'inline-flex' : 'none';
+  if (count > 0) btn.textContent = `🗑 Clear Selected (${count})`;
+}
+
+function clearExpSelected() {
+  const checked = [...document.querySelectorAll('.exp-check:checked')];
+  if (!checked.length) return;
+  if (!confirm(`Delete ${checked.length} selected expense record(s)?\nThis cannot be undone.`)) return;
+  const meids = checked.map(c => c.dataset.meid);
+  setMonthExp(getMonthExp().filter(x => !meids.includes(x.id)));
+  renderDashExpenses();
+  renderDashStats();
+}
+
+// ============================================================
+//  DASHBOARD EXPENSES SECTION
+// ============================================================
+function renderDashExpenses() {
+  const mes   = getMonthExp();
+  const m     = document.getElementById('dashMonth').value;
+  const list  = mes.filter(x => x.month === m);
+  const tbody = document.getElementById('dashExpBody');
+  const empty = document.getElementById('dashExpEmpty');
+  if (!list.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  const BADGE = {Paid:'badge-paid', Pending:'badge-pending'};
+  tbody.innerHTML = list.map(x => `<tr>
+    <td style="text-align:center"><input type="checkbox" class="exp-check" data-meid="${x.id}" onchange="onExpCheck()"/></td>
+    <td><strong>${x.buildingId}</strong></td>
+    <td>${x.category}</td>
+    <td>${x.consumerNo||'—'}</td>
+    <td>₹${fmt(parseFloat(x.amount)||0)}</td>
+    <td><span class="badge ${BADGE[x.status]||'badge-pending'}">${x.status}</span></td>
+    <td>${x.payDate||'—'}</td>
+    <td><div class="actions-row">
+      <button class="btn btn-outline btn-sm" onclick="openDashEditModal('${x.id}')">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteDashExp('${x.id}')">Delete</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+
+
+// Dashboard-only expenses (added from dashboard, not linked to master Expenses)
+let _dashMeEditId = null;
+
+function openDashAddModal() {
+  _dashMeEditId = null;
+  document.getElementById('dashFullModalTitle').textContent = 'Add Expense';
+  document.getElementById('df_statusGroup').style.display = 'none';
+  warn('dashFullWarn','');
+  document.getElementById('df_buildingId').value = '';
+  document.getElementById('df_category').value   = '';
+  document.getElementById('df_consumerNo').value = '';
+  document.getElementById('df_amount').value     = '';
+  document.getElementById('df_payDate').value    = '';
+  openModal('dashFullModal');
+}
+
+function openDashEditModal(meId) {
+  _dashMeEditId = meId;
+  const x = getMonthExp().find(r => r.id === meId) || {};
+  document.getElementById('dashFullModalTitle').textContent = 'Edit Expense';
+  document.getElementById('df_statusGroup').style.display = '';
+  warn('dashFullWarn','');
+  document.getElementById('df_buildingId').value = x.buildingId||'';
+  document.getElementById('df_category').value   = x.category||'';
+  document.getElementById('df_consumerNo').value = x.consumerNo||'';
+  document.getElementById('df_amount').value     = x.amount||'';
+  document.getElementById('df_status').value     = x.status||'Pending';
+  document.getElementById('df_payDate').value    = x.payDate||'';
+  openModal('dashFullModal');
+}
+
+function saveDashFull() {
+  const m = document.getElementById('dashMonth').value;
+  const data = {
+    expenseId:  '',
+    month:      m,
+    buildingId: document.getElementById('df_buildingId').value.trim(),
+    category:   document.getElementById('df_category').value,
+    consumerNo: document.getElementById('df_consumerNo').value.trim(),
+    amount:  document.getElementById('df_amount').value,
+    status:  _dashMeEditId ? document.getElementById('df_status').value : 'Pending',
+    payDate: document.getElementById('df_payDate').value,
+  };
+  if (!data.buildingId) { warn('dashFullWarn','Building ID is required.'); return; }
+  if (!data.category)   { warn('dashFullWarn','Category is required.');    return; }
+  if (!data.amount)     { warn('dashFullWarn','Amount is required.');       return; }
+  const mes = getMonthExp();
+  if (_dashMeEditId) {
+    const idx = mes.findIndex(x => x.id === _dashMeEditId);
+    if (idx !== -1) mes[idx] = {...mes[idx], ...data};
+  } else {
+    mes.push({id:'ME'+Date.now()+Math.random().toString(36).slice(2,6), ...data});
+  }
+  setMonthExp(mes);
+  closeModal('dashFullModal');
+  renderDashExpenses();
+}
+
+function deleteDashExp(meId) {
+  if (!confirm('Remove this expense from the dashboard? This cannot be undone.')) return;
+  setMonthExp(getMonthExp().filter(x => x.id !== meId));
+  renderDashExpenses();
+}
+
+// ============================================================
+//  EXPENSES
+// ============================================================
+let _editEid = null;
+
+function renderExpensesView() { renderExpensesTable(); }
+
+function renderExpensesTable() {
+  const es = getExpenses();
+  const q  = (document.getElementById('expSearch')?.value||'').toLowerCase();
+  const list = es.filter(e => {
+    if (!q) return true;
+    return (e.buildingId||'').toLowerCase().includes(q)
+        || (e.category||'').toLowerCase().includes(q)
+        || (e.consumerNo||'').toLowerCase().includes(q)
+        || (e.month||'').includes(q);
+  });
+  const tbody = document.getElementById('expBody');
+  const empty = document.getElementById('expEmpty');
+  if (!list.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = list.map(e => `<tr>
+    <td><strong>${e.buildingId}</strong></td>
+    <td>${e.category}</td>
+    <td>${e.consumerNo||'—'}</td>
+    <td><div class="actions-row">
+      <button class="btn btn-outline btn-sm" onclick="openExpenseModal('${e.id}')">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">Delete</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+function openExpenseModal(editId) {
+  _editEid = editId || null;
+  document.getElementById('expenseModalTitle').textContent = editId ? 'Edit Expense' : 'Add Expense';
+  warn('expenseWarn','');
+  if (editId) {
+    const e = getExpenses().find(x => x.id === editId) || {};
+    document.getElementById('ex_buildingId').value = e.buildingId||'';
+    document.getElementById('ex_category').value   = e.category||'';
+    document.getElementById('ex_consumerNo').value = e.consumerNo||'';
+    document.getElementById('ex_amount').value     = e.amount||'';
+  } else {
+    document.getElementById('ex_buildingId').value = '';
+    document.getElementById('ex_category').value   = '';
+    document.getElementById('ex_consumerNo').value = '';
+    document.getElementById('ex_amount').value     = '';
+  }
+  openModal('expenseModal');
+}
+
+function saveExpense() {
+  const data = {
+    buildingId: document.getElementById('ex_buildingId').value.trim(),
+    category:   document.getElementById('ex_category').value,
+    consumerNo: document.getElementById('ex_consumerNo').value.trim(),
+    amount:     document.getElementById('ex_amount').value,
+    status:     'Pending',
+  };
+  if (!data.buildingId) { warn('expenseWarn','Building ID is required.'); return; }
+  if (!data.category)   { warn('expenseWarn','Category is required.'); return; }
+  if (!data.amount)     { warn('expenseWarn','Amount is required.'); return; }
+  const es = getExpenses();
+  if (_editEid) {
+    const idx = es.findIndex(e => e.id === _editEid);
+    if (idx !== -1) es[idx] = {...es[idx], ...data};
+  } else {
+    es.push({id:'EX'+Date.now()+Math.random().toString(36).slice(2,6), ...data});
+  }
+  setExpenses(es);
+  closeModal('expenseModal');
+  renderExpensesView();
+  renderDashExpenses();
+}
+
+function deleteExpense(id) {
+  if (!confirm('Delete this expense record? This cannot be undone.')) return;
+  setExpenses(getExpenses().filter(e => e.id !== id));
+  setMonthExp(getMonthExp().filter(x => x.expenseId !== id));
+  renderExpensesView();
+  renderDashExpenses();
+}
+
+// ============================================================
+//  WATER RATE SETTINGS
+// ============================================================
+function getWaterRate() { return parseFloat(localStorage.getItem('rms_wrate')) || 5; }
+function setWaterRate(r) { localStorage.setItem('rms_wrate', String(r)); }
+
+function openSettings() {
+  document.getElementById('set_wrate').value = getWaterRate();
+  openModal('settingsModal');
+}
+function saveSettings() {
+  const r = parseFloat(document.getElementById('set_wrate').value);
+  if (isNaN(r) || r < 0) { alert('Please enter a valid rate.'); return; }
+  setWaterRate(r);
+  closeModal('settingsModal');
+  setStatus(`Water rate set to ₹${r}/unit`);
+}
+
+// close modals by clicking overlay background
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); });
+});
+
+// ============================================================
+//  PAYMENT RECEIPT  (opens in new tab → Save as PDF)
+// ============================================================
+function downloadReceipt(id) {
+  const ps = getPayments();
+  const p  = ps.find(x => x.id === id);
+  if (!p) { alert('Payment record not found.'); return; }
+  const ts = getTenants();
+  const t  = ts.find(x => x.tenantId === p.tenantId) || {};
+
+  const rent        = parseFloat(p.rent)        || 0;
+  const maintenance = parseFloat(p.maintenance) || 0;
+  const water       = parseFloat(p.water)       || 0;
+  const total       = parseFloat(p.total)       || 0;
+  const paidAmt     = p.payStatus === 'Paid' ? total : (parseFloat(p.paidAmt) || 0);
+  const balance = p.payStatus === 'Paid' ? 0
+                : p.payStatus === 'Partial' ? (total - paidAmt)
+                : total;
+
+  const SC = {Paid:'#276749', Pending:'#975a16', Partial:'#2c5282'};
+  const SB = {Paid:'#c6f6d5', Pending:'#feebc8', Partial:'#bee3f8'};
+  const SI = {Paid:'✓',       Pending:'⏳',       Partial:'◑'};
+  const sc = SC[p.payStatus]||'#555', sb = SB[p.payStatus]||'#eee', si = SI[p.payStatus]||'';
+
+  const recNum = 'REC-' + p.id.slice(-8).toUpperCase();
+  const today  = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'});
+  const tenantName = ((t.firstName||'')+' '+(t.lastName||'')).trim() || '—';
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Receipt – ${recNum}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;background:#dce3ea;padding:24px;color:#333}
+.no-print{text-align:center;margin-bottom:20px}
+.no-print .dl-btn{background:#217346;color:#fff;border:none;padding:12px 36px;font-size:15px;border-radius:8px;cursor:pointer;font-weight:700;letter-spacing:.5px}
+.no-print .dl-btn:hover{background:#155a34}
+.no-print p{font-size:12px;color:#666;margin-top:8px}
+.receipt{width:210mm;margin:0 auto;background:#fff;box-shadow:0 6px 30px rgba(0,0,0,.2)}
+
+/* ── Header ── */
+.rh{background:#1a3c5e;color:#fff;padding:28px 36px;display:flex;justify-content:space-between;align-items:flex-start}
+.rh-left h1{font-size:26px;font-weight:800;letter-spacing:1px}
+.rh-left p{font-size:12px;opacity:.7;margin-top:4px}
+.rh-right{text-align:right}
+.rh-right h2{font-size:17px;font-weight:800;letter-spacing:3px;opacity:.9}
+.rh-right small{font-size:11px;opacity:.6;display:block;margin-top:4px}
+
+/* ── Meta bar ── */
+.rm{background:#f0f4f8;padding:11px 36px;display:flex;justify-content:space-between;font-size:11px;color:#555;border-bottom:2px solid #e2e8f0}
+.rm strong{color:#1a3c5e}
+
+/* ── Status banner ── */
+.sb{margin:22px 36px 6px;padding:14px 22px;border-radius:10px;background:${sb};color:${sc};display:flex;align-items:center;gap:14px;font-size:17px;font-weight:800;letter-spacing:1.5px;border:2px solid ${sc}40}
+.sb-icon{font-size:28px}
+
+/* ── Body sections ── */
+.body{padding:16px 36px 24px;display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.sec h3{font-size:10px;font-weight:800;color:#2d6a9f;text-transform:uppercase;letter-spacing:1.2px;padding-bottom:7px;border-bottom:2px solid #e2e8f0;margin-bottom:10px}
+.fld{display:flex;padding:5px 0;border-bottom:1px solid #f5f5f5}
+.fld:last-child{border:none}
+.fl{width:46%;font-size:10px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding-top:1px}
+.fv{flex:1;font-size:12.5px;color:#222;font-weight:600}
+.fv.hi{color:#1a3c5e;font-weight:800;font-size:13px}
+.fv.green{color:#276749;font-weight:800}
+.fv.tiny{font-size:10px;color:#aaa;font-weight:400}
+
+/* ── Totals ── */
+.totals{margin:0 36px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tot-box{background:#1a3c5e;color:#fff;border-radius:10px;padding:16px 20px}
+.tot-box .tl{font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.tot-box .tv{font-size:22px;font-weight:800}
+.bal-box{border-radius:10px;padding:14px 20px;border:2px solid ${balance>0?'#fed7d7':'#c6f6d5'};background:${balance>0?'#fff5f5':'#f0fff4'};color:${balance>0?'#c53030':'#276749'}}
+.bal-box .tl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;opacity:.8}
+.bal-box .tv{font-size:22px;font-weight:800}
+.bal-box .tsub{font-size:11px;margin-top:4px;opacity:.7}
+
+/* ── Signatures ── */
+.sigs{margin:8px 36px 28px;display:flex;justify-content:space-between}
+.sig{text-align:center}
+.sig-line{border-top:1.5px solid #ccc;width:150px;margin:44px auto 8px}
+.sig-lbl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.5px}
+
+/* ── Footer ── */
+.rf{background:#f8fafc;border-top:2px solid #e2e8f0;padding:14px 36px;text-align:center;font-size:10.5px;color:#aaa}
+.rf strong{color:#1a3c5e}
+
+@media print{
+  body{background:#fff;padding:0}
+  .no-print{display:none!important}
+  .receipt{box-shadow:none;width:100%}
+}
+</style>
+</head>
+<body>
+<div class="no-print">
+  <button class="dl-btn" onclick="window.print()">⬇ &nbsp;Download as PDF</button>
+  <p>In the print dialog → set <strong>Destination</strong> to <strong>Save as PDF</strong></p>
+</div>
+
+<div class="receipt">
+
+  <div class="rh">
+    <div class="rh-left">
+      <h1>&#127968; RentEase</h1>
+      <p>Rental Management System</p>
+    </div>
+    <div class="rh-right">
+      <h2>PAYMENT RECEIPT</h2>
+      <small>${recNum}</small>
+    </div>
+  </div>
+
+  <div class="rm">
+    <span><strong>Receipt No:</strong> &nbsp;${recNum}</span>
+    <span><strong>Period:</strong> &nbsp;${fmtMonth(p.month)}</span>
+    <span><strong>Generated:</strong> &nbsp;${today}</span>
+  </div>
+
+  <div class="sb">
+    <span class="sb-icon">${si}</span>
+    <span>PAYMENT &nbsp;${p.payStatus.toUpperCase()}</span>
+  </div>
+
+  <div class="body" style="grid-template-columns:1fr">
+    <div class="sec">
+      <h3>Payment Breakdown</h3>
+      <div class="fld"><div class="fl">Tenant Name</div>  <div class="fv">${tenantName}</div></div>
+      <div class="fld"><div class="fl">Month</div>        <div class="fv">${fmtMonth(p.month)}</div></div>
+      <div class="fld"><div class="fl">Rent Amount</div>   <div class="fv">&#8377;${fmt(rent)}</div></div>
+      <div class="fld"><div class="fl">Maintenance</div>  <div class="fv">&#8377;${fmt(maintenance)}</div></div>
+      <div class="fld"><div class="fl">Water Bill</div>   <div class="fv">&#8377;${fmt(water)}</div></div>
+      <div class="fld"><div class="fl">Total Amount</div> <div class="fv hi">&#8377;${fmt(total)}</div></div>
+      <div class="fld"><div class="fl">Amount Paid</div>  <div class="fv green">&#8377;${fmt(paidAmt)}</div></div>
+      <div class="fld"><div class="fl">Water Reading</div><div class="fv">${p.currReading||'—'}</div></div>
+      <div class="fld"><div class="fl">Payment Date</div> <div class="fv">${p.payDate||'—'}</div></div>
+      <div class="fld"><div class="fl">Status</div>       <div class="fv" style="color:${sc};font-weight:800">${p.payStatus}</div></div>
+      <div class="fld"><div class="fl">Payment ID</div>   <div class="fv tiny">${p.id}</div></div>
+    </div>
+  </div>
+
+  <div class="totals">
+    <div class="tot-box">
+      <div class="tl">Total Amount Due</div>
+      <div class="tv">&#8377;${fmt(total)}</div>
+    </div>
+    <div class="bal-box">
+      <div class="tl">${balance > 0 ? 'Outstanding Balance' : 'Payment Balance'}</div>
+      <div class="tv">&#8377;${fmt(balance)}</div>
+      <div class="tsub">${balance > 0 ? 'Amount still due' : 'Fully settled — no balance'}</div>
+    </div>
+  </div>
+
+  <div class="sigs">
+    <div class="sig"><div class="sig-line"></div><div class="sig-lbl">Owner / Landlord Signature</div></div>
+    <div class="sig"><div class="sig-line"></div><div class="sig-lbl">Tenant Signature</div></div>
+  </div>
+
+  <div class="rf">
+    <strong>RentEase</strong> &nbsp;&#183;&nbsp; This is a computer-generated receipt &nbsp;&#183;&nbsp; ${recNum}
+    <br/>Generated on ${today}
+  </div>
+
+</div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=980,height=820');
+  if (!win) { alert('Pop-ups are blocked.\nPlease allow pop-ups for this page to download receipts.'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+}
+</script>
+</body>
+</html>
