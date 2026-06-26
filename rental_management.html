@@ -1044,15 +1044,12 @@ function renderDashStats() {
   const totalWater = mp.reduce((s,p) => s + (parseFloat(p.water)||0), 0);
   const mExp       = mes.filter(x => x.month === m);
   const totalExp   = mExp.reduce((s,x) => s + (parseFloat(x.amount)||0), 0);
-  const expPending = mExp.filter(x => x.status === 'Pending').reduce((s,x) => s + (parseFloat(x.amount)||0), 0);
   document.getElementById('dashStats').innerHTML = `
-    <div class="stat-card"><div class="lbl">Active Tenants</div><div class="val">${active}</div><div class="sub">of ${ts.length} total</div></div>
     <div class="stat-card"><div class="lbl">Paid This Month</div><div class="val" style="color:#38a169">${paid}</div><div class="sub">of ${mp.length} records</div></div>
     <div class="stat-card"><div class="lbl">Pending / Partial</div><div class="val" style="color:#dd6b20">${pending}</div><div class="sub">this month</div></div>
     <div class="stat-card"><div class="lbl">Total Water Bill</div><div class="val" style="color:#2c5282">₹${fmt(totalWater)}</div><div class="sub">all tenants this month</div></div>
     <div class="stat-card"><div class="lbl">Amount Collected</div><div class="val" style="color:#1a3c5e">₹${fmt(collected)}</div><div class="sub">paid + partial amounts</div></div>
-    <div class="stat-card"><div class="lbl">Total Expenses</div><div class="val" style="color:#c05621">₹${fmt(totalExp)}</div><div class="sub">this month</div></div>
-    <div class="stat-card"><div class="lbl">Expenses Pending</div><div class="val" style="color:#e53e3e">₹${fmt(expPending)}</div><div class="sub">yet to be paid</div></div>`;
+    <div class="stat-card"><div class="lbl">Total Expenses</div><div class="val" style="color:#c05621">₹${fmt(totalExp)}</div><div class="sub">this month</div></div>`;
 }
 
 function renderDashTable() {
@@ -1428,8 +1425,6 @@ function generateMonthlyReport() {
     .reduce((s,p) => s + (p.payStatus === 'Paid' ? (parseFloat(p.total)||0) : (parseFloat(p.paidAmt)||0)), 0);
   const totalWater  = ps.reduce((s,p) => s + (parseFloat(p.water)||0), 0);
   const totalExp    = mes.reduce((s,x) => s + (parseFloat(x.amount)||0), 0);
-  const expPending  = mes.filter(x => x.status === 'Pending').reduce((s,x) => s + (parseFloat(x.amount)||0), 0);
-
   const statBox = (lbl, val) =>
     `<div style="background:#f7fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;min-width:130px;text-align:center">
        <div style="font-size:10px;font-weight:700;color:#718096;text-transform:uppercase;letter-spacing:.5px">${lbl}</div>
@@ -1499,7 +1494,6 @@ function generateMonthlyReport() {
     ${statBox('Amount Collected', '₹'+fmt(collected))}
     ${statBox('Total Water Bill', '₹'+fmt(totalWater))}
     ${statBox('Total Expenses', '₹'+fmt(totalExp))}
-    ${statBox('Expenses Pending', '₹'+fmt(expPending))}
   </div>
 
   <div class="section-title">Payment Status</div>
