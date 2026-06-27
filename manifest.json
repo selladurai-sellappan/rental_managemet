@@ -1,0 +1,15 @@
+{
+  "name": "RentEase – Rental Management",
+  "short_name": "RentEase",
+  "description": "Manage your rental properties offline",
+  "start_url": "/rental_management.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1a3c5e",
+  "theme_color": "#1a3c5e",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

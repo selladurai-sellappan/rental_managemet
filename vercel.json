@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/", "destination": "/rental_management.html" }]
+}
