@@ -142,6 +142,99 @@ tr:hover td{background:#fafcff}
 .actions-row{display:flex;gap:6px;flex-wrap:wrap}
 .db-status{font-size:11px;color:rgba(255,255,255,.5);padding:0 18px 12px;display:flex;align-items:center;gap:6px}
 .db-dot{width:7px;height:7px;border-radius:50%;background:#68d391;flex-shrink:0}
+
+/* ===== BOTTOM NAV (hidden on desktop) ===== */
+.bottom-nav{display:none}
+
+/* ===== MOBILE ===== */
+@media (max-width:768px){
+  /* Sidebar hidden */
+  .sidebar{display:none}
+
+  /* App layout stacks vertically */
+  #appPage{flex-direction:column}
+  .main-content{margin-left:0;padding:14px 12px 80px;width:100%}
+
+  /* Bottom nav bar */
+  .bottom-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;
+    background:#1a3c5e;z-index:500;height:62px;
+    align-items:center;justify-content:space-around;
+    box-shadow:0 -2px 12px rgba(0,0,0,.25);
+    padding-bottom:env(safe-area-inset-bottom)
+  }
+  .bn-item{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    flex:1;height:100%;cursor:pointer;color:rgba(255,255,255,.55);
+    font-size:10px;font-weight:600;gap:3px;letter-spacing:.2px;
+    -webkit-tap-highlight-color:transparent;transition:color .15s;
+    padding:6px 0;user-select:none
+  }
+  .bn-item.active{color:#fff}
+  .bn-item .bn-icon{font-size:21px;line-height:1}
+
+  /* More menu */
+  .more-menu{
+    position:fixed;bottom:62px;left:0;right:0;
+    background:#fff;border-radius:20px 20px 0 0;
+    z-index:700;padding:8px 0 12px;
+    box-shadow:0 -4px 20px rgba(0,0,0,.15);
+    transform:translateY(100%);transition:transform .25s ease;
+  }
+  .more-menu.open{transform:translateY(0)}
+  .more-menu-handle{width:40px;height:4px;background:#e2e8f0;border-radius:2px;margin:8px auto 14px}
+  .more-menu-item{
+    display:flex;align-items:center;gap:16px;
+    padding:14px 22px;font-size:15px;color:#333;cursor:pointer;
+    -webkit-tap-highlight-color:transparent
+  }
+  .more-menu-item:active{background:#f7fafc}
+  .more-menu-item .mi-icon{font-size:20px;width:24px;text-align:center}
+  .more-menu-sep{margin:4px 20px;border:none;border-top:1px solid #f0f0f0}
+
+  /* Stats - 2 columns */
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .stat-card{padding:14px 12px}
+  .stat-card .val{font-size:20px}
+  .stat-card .lbl{font-size:10px}
+
+  /* Page header stacks */
+  .page-header{flex-direction:column;gap:10px;margin-bottom:16px}
+  .header-actions{width:100%;flex-wrap:wrap;gap:6px}
+  .header-actions .btn{flex:1;min-width:calc(50% - 3px);font-size:12px;padding:9px 6px;text-align:center;justify-content:center}
+
+  /* Buttons - touch friendly */
+  .btn{min-height:44px;display:flex;align-items:center;justify-content:center}
+  .btn-sm{min-height:36px;font-size:12px}
+  .btn-block{min-height:48px;font-size:15px}
+
+  /* Tables - horizontal scroll with touch */
+  table{font-size:12px}
+  th{font-size:10px;padding:9px 10px;white-space:nowrap}
+  td{padding:9px 10px;white-space:nowrap}
+  div[style*="overflow-x:auto"]{-webkit-overflow-scrolling:touch}
+
+  /* Search bar full width */
+  .search-bar{width:100%}
+  .table-header{flex-direction:column;align-items:stretch;gap:8px}
+
+  /* Month bar */
+  .month-bar{gap:10px;padding:12px 14px}
+
+  /* Modals - slide up from bottom, full width */
+  .modal-overlay{align-items:flex-end}
+  .modal{width:100%;max-width:100%;border-radius:20px 20px 0 0;max-height:90vh}
+  .modal-sm{max-width:100%}
+  .modal-footer{flex-direction:column-reverse;gap:8px}
+  .modal-footer .btn{width:100%}
+
+  /* Login/setup cards full width */
+  .login-card{width:calc(100% - 32px);padding:32px 24px}
+  #forgotOverlay .login-card{width:calc(100% - 32px)}
+
+  /* Page title smaller */
+  .page-title h2{font-size:18px}
+}
 </style>
 </head>
 <body>
@@ -435,6 +528,53 @@ tr:hover td{background:#fafcff}
     </div>
 
   </div>
+
+  <!-- ======= BOTTOM NAV (mobile) ======= -->
+  <nav class="bottom-nav" id="bottomNav">
+    <div class="bn-item active" id="bn-dashboard" onclick="showView('dashboard')">
+      <span class="bn-icon">🏠</span>
+      <span>Dashboard</span>
+    </div>
+    <div class="bn-item" id="bn-tenants" onclick="showView('tenants')">
+      <span class="bn-icon">👥</span>
+      <span>Tenants</span>
+    </div>
+    <div class="bn-item" id="bn-payments" onclick="showView('payments')">
+      <span class="bn-icon">💳</span>
+      <span>Payments</span>
+    </div>
+    <div class="bn-item" id="bn-expenses" onclick="showView('expenses')">
+      <span class="bn-icon">📋</span>
+      <span>Expenses</span>
+    </div>
+    <div class="bn-item" id="bn-more" onclick="toggleMoreMenu()">
+      <span class="bn-icon">☰</span>
+      <span>More</span>
+    </div>
+  </nav>
+
+  <!-- ======= MORE MENU (mobile slide-up) ======= -->
+  <div id="moreMenuOverlay" onclick="closeMoreMenu()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:600"></div>
+  <div class="more-menu" id="moreMenu">
+    <div class="more-menu-handle"></div>
+    <div class="more-menu-item" onclick="openYearReportModal();closeMoreMenu()">
+      <span class="mi-icon">📅</span> Yearly Report
+    </div>
+    <div class="more-menu-item" onclick="document.getElementById('importFileInput').click();closeMoreMenu()">
+      <span class="mi-icon">📂</span> Import Excel DB
+    </div>
+    <div class="more-menu-item" onclick="exportExcel();closeMoreMenu()">
+      <span class="mi-icon">💾</span> Export Excel DB
+    </div>
+    <div class="more-menu-item" onclick="openSettings();closeMoreMenu()">
+      <span class="mi-icon">⚙️</span> Settings
+    </div>
+    <hr class="more-menu-sep"/>
+    <div class="more-menu-item" onclick="doLogout();closeMoreMenu()" style="color:#e53e3e">
+      <span class="mi-icon">🚪</span> Logout
+    </div>
+  </div>
+
 </div>
 
 <!-- ======= MODAL: Initiate Month ======= -->
@@ -908,6 +1048,23 @@ function doLogin() {
   }
 }
 
+function toggleMoreMenu() {
+  const menu    = document.getElementById('moreMenu');
+  const overlay = document.getElementById('moreMenuOverlay');
+  const isOpen  = menu.classList.contains('open');
+  if (isOpen) { closeMoreMenu(); } else {
+    menu.classList.add('open');
+    overlay.style.display = 'block';
+    document.getElementById('bn-more').classList.add('active');
+  }
+}
+
+function closeMoreMenu() {
+  document.getElementById('moreMenu').classList.remove('open');
+  document.getElementById('moreMenuOverlay').style.display = 'none';
+  document.getElementById('bn-more').classList.remove('active');
+}
+
 function doLogout() {
   sessionStorage.removeItem('rms_a');
   document.getElementById('appPage').style.display   = 'none';
@@ -1023,10 +1180,13 @@ window.onload = () => {
 function showView(v) {
   ['dashboard','tenants','payments','expenses'].forEach(x => {
     document.getElementById(x+'View').classList.remove('active');
-    const n = document.getElementById('nav-'+x); if(n) n.classList.remove('active');
+    const n  = document.getElementById('nav-'+x);  if(n)  n.classList.remove('active');
+    const bn = document.getElementById('bn-'+x);   if(bn) bn.classList.remove('active');
   });
   document.getElementById(v+'View').classList.add('active');
-  const n = document.getElementById('nav-'+v); if(n) n.classList.add('active');
+  const n  = document.getElementById('nav-'+v);  if(n)  n.classList.add('active');
+  const bn = document.getElementById('bn-'+v);   if(bn) bn.classList.add('active');
+  closeMoreMenu();
   if (v==='dashboard') renderDashboard();
   if (v==='tenants')   renderTenantsTable();
   if (v==='payments')  renderPaymentsTable();
