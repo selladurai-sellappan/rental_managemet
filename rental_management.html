@@ -711,7 +711,7 @@ tr:hover td{background:#fafcff}
         <div class="form-section">💧 Water Meter Reading</div>
         <div class="form-group">
           <label>Previous Reading (units)</label>
-          <input type="number" id="pm_prevReading" readonly/>
+          <input type="number" id="pm_prevReading" min="0" oninput="pmRecalc()"/>
         </div>
         <div class="form-group">
           <label>Current Reading (units) *</label>
