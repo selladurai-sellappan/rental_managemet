@@ -484,7 +484,7 @@ tr:hover td{background:#fafcff}
         <div style="overflow-x:auto">
           <table>
             <thead><tr>
-              <th>Tenant ID</th><th>House ID</th><th>Name</th>
+              <th>House ID</th><th>Name</th>
               <th>Contact</th><th>Rent (₹)</th><th>Occupied On</th>
               <th>Rent Cycle</th><th>Status</th><th>Actions</th>
             </tr></thead>
@@ -509,7 +509,7 @@ tr:hover td{background:#fafcff}
         <div style="overflow-x:auto">
           <table>
             <thead><tr>
-              <th>Tenant ID</th><th>House ID</th><th>Month</th>
+              <th>House ID</th><th>Month</th>
               <th>Rent Amount (₹)</th><th>Payment Status</th><th>Payment Date</th>
             </tr></thead>
             <tbody id="payBody"></tbody>
@@ -627,7 +627,6 @@ tr:hover td{background:#fafcff}
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group"><label>Tenant ID *</label><input type="text" id="f_tenantId" placeholder="e.g. T001"/></div>
         <div class="form-group"><label>House ID *</label><input type="text" id="f_houseId" placeholder="e.g. H001"/></div>
         <div class="form-group full"><label>House Address</label><input type="text" id="f_houseAddress" placeholder="Full address of the house"/></div>
         <div class="form-group"><label>First Name *</label><input type="text" id="f_firstName" placeholder="First name"/></div>
@@ -1412,8 +1411,8 @@ function savePaymentUpdate() {
 // ============================================================
 //  TENANTS
 // ============================================================
-const F_IDS = ['f_tenantId','f_houseId','f_houseAddress','f_firstName','f_lastName','f_contact','f_aadhaar','f_aadhaarAddr','f_rent','f_deposit','f_depositDate','f_occupiedDate','f_vacatedDate','f_keys','f_agreement','f_status','f_waterRate','f_maintenanceCost','f_rentCycle'];
-const F_KEYS = ['tenantId','houseId','houseAddress','firstName','lastName','contact','aadhaar','aadhaarAddr','rent','deposit','depositDate','occupiedDate','vacatedDate','keys','agreement','status','waterRate','maintenanceCost','rentCycle'];
+const F_IDS = ['f_houseId','f_houseAddress','f_firstName','f_lastName','f_contact','f_aadhaar','f_aadhaarAddr','f_rent','f_deposit','f_depositDate','f_occupiedDate','f_vacatedDate','f_keys','f_agreement','f_status','f_waterRate','f_maintenanceCost','f_rentCycle'];
+const F_KEYS = ['houseId','houseAddress','firstName','lastName','contact','aadhaar','aadhaarAddr','rent','deposit','depositDate','occupiedDate','vacatedDate','keys','agreement','status','waterRate','maintenanceCost','rentCycle'];
 
 function openTenantModal(editId) {
   _editTid = editId || null;
@@ -1422,12 +1421,8 @@ function openTenantModal(editId) {
   if (editId) {
     const t = getTenants().find(x => x.tenantId === editId) || {};
     F_KEYS.forEach((k,i) => { const el=document.getElementById(F_IDS[i]); if(el) el.value=t[k]||''; });
-    document.getElementById('f_tenantId').readOnly = true;
-    document.getElementById('f_tenantId').style.background = '#f5f7fa';
   } else {
     F_KEYS.forEach((k,i) => { const el=document.getElementById(F_IDS[i]); if(el) el.value=k==='status'?'Active':k==='rentCycle'?'1st of every month':''; });
-    document.getElementById('f_tenantId').readOnly = false;
-    document.getElementById('f_tenantId').style.background = '';
   }
   openModal('tenantModal');
 }
@@ -1435,7 +1430,6 @@ function openTenantModal(editId) {
 function saveTenant() {
   const data = {};
   F_KEYS.forEach((k,i) => { const el=document.getElementById(F_IDS[i]); data[k]=el?el.value.trim():''; });
-  if (!data.tenantId)  { warn('tenantWarn','Tenant ID is required.'); return; }
   if (!data.houseId)   { warn('tenantWarn','House ID is required.');  return; }
   if (!data.firstName) { warn('tenantWarn','First name is required.'); return; }
   const ts = getTenants();
@@ -1443,7 +1437,7 @@ function saveTenant() {
     const idx = ts.findIndex(t => t.tenantId === _editTid);
     if (idx !== -1) ts[idx] = {...ts[idx], ...data};
   } else {
-    if (ts.find(t => t.tenantId === data.tenantId)) { warn('tenantWarn','Tenant ID already exists.'); return; }
+    data.tenantId = 'T' + Date.now() + Math.random().toString(36).slice(2,5).toUpperCase();
     ts.push(data);
   }
   setTenants(ts); // writes to Excel
@@ -1463,15 +1457,14 @@ function renderTenantsTable() {
   const list = ts.filter(t => {
     if (!q) return true;
     const name = ((t.firstName||'')+' '+(t.lastName||'')).toLowerCase();
-    return name.includes(q)||t.tenantId.toLowerCase().includes(q)||t.houseId.toLowerCase().includes(q);
+    return name.includes(q)||t.houseId.toLowerCase().includes(q);
   });
   const tbody = document.getElementById('tenantBody');
   const empty = document.getElementById('tenantEmpty');
   if (!list.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display = 'none';
   tbody.innerHTML = list.map(t => `<tr>
-    <td><strong>${t.tenantId}</strong></td>
-    <td>${t.houseId}</td>
+    <td><strong>${t.houseId}</strong></td>
     <td>${t.firstName||''} ${t.lastName||''}</td>
     <td>${t.contact||'—'}</td>
     <td>₹${fmt(parseFloat(t.rent)||0)}</td>
@@ -1491,7 +1484,6 @@ function viewTenant(id) {
   const row = (lbl, val) => `<div class="detail-row"><div class="detail-label">${lbl}</div><div class="detail-value">${val||'—'}</div></div>`;
   const ABADGE = {Signed:'badge-signed',Expired:'badge-expired',Pending:'badge-pending'};
   document.getElementById('viewTenantBody').innerHTML = `
-    ${row('Tenant ID',`<strong>${t.tenantId}</strong>`)}
     ${row('House ID', t.houseId)} ${row('House Address', t.houseAddress)}
     ${row('Full Name', `${t.firstName||''} ${t.lastName||''}`.trim())}
     ${row('Contact Number', t.contact)} ${row('Aadhaar Number', t.aadhaar)}
@@ -1516,7 +1508,7 @@ function renderPaymentsTable() {
   const q  = (document.getElementById('paySearch')?.value||'').toLowerCase();
   const list = ps.filter(p => {
     if (!q) return true;
-    return p.tenantId.toLowerCase().includes(q)||p.houseId.toLowerCase().includes(q)||p.month.includes(q);
+    return p.houseId.toLowerCase().includes(q)||p.month.includes(q);
   }).sort((a,b) => b.month.localeCompare(a.month)||a.houseId.localeCompare(b.houseId));
   const tbody = document.getElementById('payBody');
   const empty = document.getElementById('payEmpty');
@@ -1524,7 +1516,7 @@ function renderPaymentsTable() {
   empty.style.display = 'none';
   const BADGE = {Paid:'badge-paid',Pending:'badge-pending',Partial:'badge-partial'};
   tbody.innerHTML = list.map(p => `<tr>
-    <td>${p.tenantId}</td><td>${p.houseId}</td>
+    <td><strong>${p.houseId}</strong></td>
     <td>${fmtMonth(p.month)}</td>
     <td>₹${fmt(parseFloat(p.rent)||0)}</td>
     <td><span class="badge ${BADGE[p.payStatus]||'badge-pending'}">${p.payStatus}</span></td>
