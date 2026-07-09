@@ -743,6 +743,10 @@ tr:hover td{background:#fafcff}
           <input type="number" id="pm_paidAmt" placeholder="0" min="0" oninput="pmRecalc()"/>
         </div>
         <div class="form-group"><label>Payment Date</label><input type="date" id="pm_date"/></div>
+        <div class="form-group" id="pm_balPaidDateGroup" style="display:none">
+          <label>Balance Paid Date</label>
+          <input type="date" id="pm_balPaidDate"/>
+        </div>
 
       </div>
       <div id="pm_balRow" style="display:none;margin-top:4px;font-size:13px;font-weight:700;color:#e53e3e"></div>
@@ -917,7 +921,7 @@ const P_FIELDS = [
   ['payDate','Payment Date'],['paidAmt','Amount Paid'],
   ['prevReading','Prev Reading'],['currReading','Curr Reading'],
   ['unitsConsumed','Units Consumed'],['waterRate','Water Rate'],
-  ['maintenance','Maintenance']
+  ['maintenance','Maintenance'],['balPaidDate','Balance Paid Date']
 ];
 
 const E_FIELDS = [
@@ -1345,6 +1349,7 @@ function openPaymentModal(id) {
   document.getElementById('pm_status').value      = p.payStatus||'Pending';
   document.getElementById('pm_date').value        = p.payDate||'';
   document.getElementById('pm_paidAmt').value     = p.paidAmt||0;
+  document.getElementById('pm_balPaidDate').value = p.balPaidDate||'';
   pmRecalc();
   openModal('paymentModal');
 }
@@ -1376,11 +1381,13 @@ function pmRecalc() {
   const status = document.getElementById('pm_status').value;
   const pag    = document.getElementById('pm_paidAmtGroup');
   const br     = document.getElementById('pm_balRow');
+  const bpg = document.getElementById('pm_balPaidDateGroup');
   if (status === 'Partial') {
     pag.style.display = 'block';
+    bpg.style.display = 'block';
     const paid = parseFloat(document.getElementById('pm_paidAmt').value)||0;
     br.style.display = 'block'; br.textContent = `Balance: ₹${fmt(total - paid)}`;
-  } else { pag.style.display='none'; br.style.display='none'; }
+  } else { pag.style.display='none'; bpg.style.display='none'; br.style.display='none'; }
 }
 
 function savePaymentUpdate() {
@@ -1401,7 +1408,8 @@ function savePaymentUpdate() {
     prevReading, currReading, unitsConsumed, waterRate,
     maintenance, water, total, payStatus:status,
     payDate: document.getElementById('pm_date').value,
-    paidAmt
+    paidAmt,
+    balPaidDate: status==='Partial' ? document.getElementById('pm_balPaidDate').value : ''
   };
   setPayments(ps);
   closeModal('paymentModal');
