@@ -655,6 +655,11 @@ tr:hover td{background:#fafcff}
           <input type="number" id="f_waterRate" placeholder="e.g. 5.00" min="0" step="0.5" style="margin-top:6px"/>
           <p style="font-size:11px;color:#718096;margin-top:6px">Auto-calculates water bill each month. Overrides global default.</p>
         </div>
+        <div class="form-group" style="background:#f0f7ff;border-radius:8px;padding:14px;border:1.5px solid #bee3f8">
+          <label style="color:#2c5282">🔢 Meter Perf Factor</label>
+          <input type="number" id="f_meterPerfFactor" placeholder="e.g. 1.00" min="0" step="0.01" style="margin-top:6px"/>
+          <p style="font-size:11px;color:#718096;margin-top:6px">Multiplier for water bill. Default is 1 (no adjustment).</p>
+        </div>
         <div class="form-group" style="background:#fff7ed;border-radius:8px;padding:14px;border:1.5px solid #fbd38d">
           <label style="color:#744210">🔧 Maintenance Cost (₹ per month)</label>
           <input type="number" id="f_maintenanceCost" placeholder="e.g. 500" min="0" step="50" style="margin-top:6px"/>
@@ -724,6 +729,10 @@ tr:hover td{background:#fafcff}
         <div class="form-group">
           <label>Rate per Unit (₹)</label>
           <input type="number" id="pm_rate" placeholder="e.g. 5" min="0" step="0.5" oninput="pmRecalc()"/>
+        </div>
+        <div class="form-group">
+          <label>Meter Perf Factor</label>
+          <input type="number" id="pm_mpf" placeholder="e.g. 1.00" min="0" step="0.01" oninput="pmRecalc()"/>
         </div>
         <div class="form-group full">
           <label>Water Bill (₹) — auto-calculated from reading</label>
@@ -910,8 +919,8 @@ const T_FIELDS = [
   ['depositDate','Deposit Date'],['occupiedDate','Occupied Date'],
   ['vacatedDate','Vacated On'],['keys','Keys Given'],
   ['agreement','Agreement Status'],['status','Active Status'],
-  ['waterRate','Water Rate Per Unit'],['maintenanceCost','Maintenance Cost'],
-  ['rentCycle','Rent Cycle']
+  ['waterRate','Water Rate Per Unit'],['meterPerfFactor','Meter Perf Factor'],
+  ['maintenanceCost','Maintenance Cost'],['rentCycle','Rent Cycle']
 ];
 
 const P_FIELDS = [
@@ -921,6 +930,7 @@ const P_FIELDS = [
   ['payDate','Payment Date'],['paidAmt','Amount Paid'],
   ['prevReading','Prev Reading'],['currReading','Curr Reading'],
   ['unitsConsumed','Units Consumed'],['waterRate','Water Rate'],
+  ['meterPerfFactor','Meter Perf Factor'],
   ['maintenance','Maintenance'],['balPaidDate','Balance Paid Date']
 ];
 
@@ -1296,15 +1306,16 @@ function initiateMonth() {
       .filter(x => x.tenantId === t.tenantId && x.month < m)
       .sort((a,b) => b.month.localeCompare(a.month))[0];
     const prevReading = prevRec ? (parseFloat(prevRec.currReading)||0) : 0;
-    const waterRate   = parseFloat(t.waterRate)       || getWaterRate();
-    const maintenance = parseFloat(t.maintenanceCost) || 0;
-    const rent        = parseFloat(t.rent)            || 0;
+    const waterRate       = parseFloat(t.waterRate)       || getWaterRate();
+    const meterPerfFactor = parseFloat(t.meterPerfFactor) || 1;
+    const maintenance     = parseFloat(t.maintenanceCost) || 0;
+    const rent            = parseFloat(t.rent)            || 0;
     ps.push({
       id: 'P'+Date.now()+Math.random().toString(36).slice(2,6),
       tenantId: t.tenantId, houseId: t.houseId, month: m,
       rent, maintenance, water: 0, total: rent + maintenance,
       payStatus: 'Pending', payDate: '', paidAmt: 0,
-      prevReading, currReading: 0, unitsConsumed: 0, waterRate
+      prevReading, currReading: 0, unitsConsumed: 0, waterRate, meterPerfFactor
     });
   });
   setPayments(ps);
@@ -1344,6 +1355,7 @@ function openPaymentModal(id) {
   document.getElementById('pm_currReading').value = p.currReading||'';
   document.getElementById('pm_units').value       = p.unitsConsumed||0;
   document.getElementById('pm_rate').value        = p.waterRate ?? getWaterRate();
+  document.getElementById('pm_mpf').value         = p.meterPerfFactor ?? (parseFloat(t.meterPerfFactor)||1);
   document.getElementById('pm_water').value       = p.water||0;
   document.getElementById('pm_total').value       = p.total||0;
   document.getElementById('pm_status').value      = p.payStatus||'Pending';
@@ -1360,12 +1372,13 @@ function pmRecalc() {
   const prevR       = parseFloat(document.getElementById('pm_prevReading').value)||0;
   const currR       = parseFloat(document.getElementById('pm_currReading').value);
   const rate        = parseFloat(document.getElementById('pm_rate').value)||0;
+  const mpf         = parseFloat(document.getElementById('pm_mpf').value)||1;
 
   // calculate water bill from readings if a current reading is entered
   let water = 0, units = 0;
   if (!isNaN(currR) && currR >= prevR) {
     units = currR - prevR;
-    water = units * rate;
+    water = units * rate * mpf;
   } else if (!isNaN(currR) && currR < prevR) {
     document.getElementById('pm_units').value = '⚠ Check reading';
     document.getElementById('pm_water').value = 0;
@@ -1398,14 +1411,15 @@ function savePaymentUpdate() {
   const prevReading  = parseFloat(document.getElementById('pm_prevReading').value)||0;
   const currReading  = parseFloat(document.getElementById('pm_currReading').value)||0;
   const unitsConsumed= parseFloat(document.getElementById('pm_units').value)||0;
-  const waterRate    = parseFloat(document.getElementById('pm_rate').value)||0;
+  const waterRate       = parseFloat(document.getElementById('pm_rate').value)||0;
+  const meterPerfFactor = parseFloat(document.getElementById('pm_mpf').value)||1;
   const water        = parseFloat(document.getElementById('pm_water').value)||0;
   const total        = parseFloat(document.getElementById('pm_total').value)||0;
   const status       = document.getElementById('pm_status').value;
   const paidAmt      = status==='Paid' ? total : status==='Partial' ? parseFloat(document.getElementById('pm_paidAmt').value)||0 : 0;
   ps[idx] = {
     ...ps[idx],
-    prevReading, currReading, unitsConsumed, waterRate,
+    prevReading, currReading, unitsConsumed, waterRate, meterPerfFactor,
     maintenance, water, total, payStatus:status,
     payDate: document.getElementById('pm_date').value,
     paidAmt,
@@ -1419,8 +1433,8 @@ function savePaymentUpdate() {
 // ============================================================
 //  TENANTS
 // ============================================================
-const F_IDS = ['f_houseId','f_houseAddress','f_firstName','f_lastName','f_contact','f_aadhaar','f_aadhaarAddr','f_rent','f_deposit','f_depositDate','f_occupiedDate','f_vacatedDate','f_keys','f_agreement','f_status','f_waterRate','f_maintenanceCost','f_rentCycle'];
-const F_KEYS = ['houseId','houseAddress','firstName','lastName','contact','aadhaar','aadhaarAddr','rent','deposit','depositDate','occupiedDate','vacatedDate','keys','agreement','status','waterRate','maintenanceCost','rentCycle'];
+const F_IDS = ['f_houseId','f_houseAddress','f_firstName','f_lastName','f_contact','f_aadhaar','f_aadhaarAddr','f_rent','f_deposit','f_depositDate','f_occupiedDate','f_vacatedDate','f_keys','f_agreement','f_status','f_waterRate','f_meterPerfFactor','f_maintenanceCost','f_rentCycle'];
+const F_KEYS = ['houseId','houseAddress','firstName','lastName','contact','aadhaar','aadhaarAddr','rent','deposit','depositDate','occupiedDate','vacatedDate','keys','agreement','status','waterRate','meterPerfFactor','maintenanceCost','rentCycle'];
 
 function openTenantModal(editId) {
   _editTid = editId || null;
