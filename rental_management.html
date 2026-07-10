@@ -435,7 +435,7 @@ tr:hover td{background:#fafcff}
             <thead><tr>
               <th style="width:38px;text-align:center"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" title="Select all"/></th>
               <th>House ID</th><th>Tenant Name</th>
-              <th>Rent (₹)</th><th>Maintenance (₹)</th><th>Water Bill (₹)</th><th>Total (₹)</th>
+              <th>Rent (₹)</th><th>Maintenance (₹)</th><th>Water Bill (₹)</th><th>Oth Exp (₹)</th><th>Total (₹)</th>
               <th>Status</th><th>Paid Date</th><th>Balance (₹)</th><th>Receipt</th><th>Action</th>
             </tr></thead>
             <tbody id="dashBody"></tbody>
@@ -1281,6 +1281,7 @@ function renderDashTable() {
       <td>₹${fmt(parseFloat(r.rent)||0)}</td>
       <td>₹${fmt(parseFloat(r.maintenance)||0)}</td>
       <td>₹${fmt(water)}</td>
+      <td>₹${fmt(parseFloat(r.otherExpenses)||0)}</td>
       <td><strong>₹${fmt(total)}</strong></td>
       <td><span class="badge ${BADGE[r.payStatus]||'badge-pending'}">${r.payStatus}</span></td>
       <td>${r.payDate||'—'}</td>
@@ -2094,10 +2095,11 @@ function downloadReceipt(id) {
   const ts = getTenants();
   const t  = ts.find(x => x.tenantId === p.tenantId) || {};
 
-  const rent        = parseFloat(p.rent)        || 0;
-  const maintenance = parseFloat(p.maintenance) || 0;
-  const water       = parseFloat(p.water)       || 0;
-  const total       = parseFloat(p.total)       || 0;
+  const rent         = parseFloat(p.rent)          || 0;
+  const maintenance  = parseFloat(p.maintenance)   || 0;
+  const water        = parseFloat(p.water)          || 0;
+  const otherExpenses= parseFloat(p.otherExpenses)  || 0;
+  const total        = parseFloat(p.total)          || 0;
   const paidAmt     = p.payStatus === 'Paid' ? total : (parseFloat(p.paidAmt) || 0);
   const balance = p.payStatus === 'Paid' ? 0
                 : p.payStatus === 'Partial' ? (total - paidAmt)
@@ -2217,8 +2219,9 @@ body{font-family:Arial,Helvetica,sans-serif;background:#dce3ea;padding:24px;colo
       <div class="fld"><div class="fl">Month</div>        <div class="fv">${fmtMonth(p.month)}</div></div>
       <div class="fld"><div class="fl">Rent Amount</div>   <div class="fv">&#8377;${fmt(rent)}</div></div>
       <div class="fld"><div class="fl">Maintenance</div>  <div class="fv">&#8377;${fmt(maintenance)}</div></div>
-      <div class="fld"><div class="fl">Water Bill</div>   <div class="fv">&#8377;${fmt(water)}</div></div>
-      <div class="fld"><div class="fl">Total Amount</div> <div class="fv hi">&#8377;${fmt(total)}</div></div>
+      <div class="fld"><div class="fl">Water Bill</div>    <div class="fv">&#8377;${fmt(water)}</div></div>
+      ${otherExpenses > 0 ? `<div class="fld"><div class="fl">Other Expenses</div><div class="fv">&#8377;${fmt(otherExpenses)}</div></div>` : ''}
+      <div class="fld"><div class="fl">Total Amount</div>  <div class="fv hi">&#8377;${fmt(total)}</div></div>
       <div class="fld"><div class="fl">Amount Paid</div>  <div class="fv green">&#8377;${fmt(paidAmt)}</div></div>
       <div class="fld"><div class="fl">Water Reading</div><div class="fv">${p.currReading||'—'}</div></div>
       <div class="fld"><div class="fl">Payment Date</div> <div class="fv">${p.payDate||'—'}</div></div>
