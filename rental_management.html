@@ -1388,7 +1388,7 @@ function pmRecalc() {
   } else if (!isNaN(currR) && currR < prevR) {
     document.getElementById('pm_units').value = '⚠ Check reading';
     document.getElementById('pm_water').value = 0;
-    document.getElementById('pm_total').value = rent + maintenance;
+    document.getElementById('pm_total').value = Math.round(rent + maintenance);
     return;
   }
 
@@ -1396,7 +1396,7 @@ function pmRecalc() {
   document.getElementById('pm_units').value = units;
   document.getElementById('pm_water').value = water.toFixed(2);
   const total = rent + maintenance + water + otherExp;
-  document.getElementById('pm_total').value = total.toFixed(2);
+  document.getElementById('pm_total').value = Math.round(total);
 
   const status = document.getElementById('pm_status').value;
   const pag    = document.getElementById('pm_paidAmtGroup');
