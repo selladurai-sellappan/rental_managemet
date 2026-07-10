@@ -738,6 +738,10 @@ tr:hover td{background:#fafcff}
           <label>Water Bill (₹) — auto-calculated from reading</label>
           <input type="number" id="pm_water" readonly/>
         </div>
+        <div class="form-group full">
+          <label>Other Expenses (₹)</label>
+          <input type="number" id="pm_otherExp" value="0" min="0" oninput="pmRecalc()"/>
+        </div>
 
         <!-- Payment -->
         <div class="form-section">💳 Payment</div>
@@ -931,7 +935,7 @@ const P_FIELDS = [
   ['prevReading','Prev Reading'],['currReading','Curr Reading'],
   ['unitsConsumed','Units Consumed'],['waterRate','Water Rate'],
   ['meterPerfFactor','Meter Perf Factor'],
-  ['maintenance','Maintenance'],['balPaidDate','Balance Paid Date']
+  ['maintenance','Maintenance'],['otherExpenses','Other Expenses'],['balPaidDate','Balance Paid Date']
 ];
 
 const E_FIELDS = [
@@ -1357,6 +1361,7 @@ function openPaymentModal(id) {
   document.getElementById('pm_rate').value        = p.waterRate ?? getWaterRate();
   document.getElementById('pm_mpf').value         = p.meterPerfFactor ?? (parseFloat(t.meterPerfFactor)||1);
   document.getElementById('pm_water').value       = p.water||0;
+  document.getElementById('pm_otherExp').value    = p.otherExpenses||0;
   document.getElementById('pm_total').value       = p.total||0;
   document.getElementById('pm_status').value      = p.payStatus||'Pending';
   document.getElementById('pm_date').value        = p.payDate||'';
@@ -1386,9 +1391,10 @@ function pmRecalc() {
     return;
   }
 
+  const otherExp = parseFloat(document.getElementById('pm_otherExp').value)||0;
   document.getElementById('pm_units').value = units;
   document.getElementById('pm_water').value = water.toFixed(2);
-  const total = rent + maintenance + water;
+  const total = rent + maintenance + water + otherExp;
   document.getElementById('pm_total').value = total.toFixed(2);
 
   const status = document.getElementById('pm_status').value;
@@ -1413,6 +1419,7 @@ function savePaymentUpdate() {
   const unitsConsumed= parseFloat(document.getElementById('pm_units').value)||0;
   const waterRate       = parseFloat(document.getElementById('pm_rate').value)||0;
   const meterPerfFactor = parseFloat(document.getElementById('pm_mpf').value)||1;
+  const otherExpenses   = parseFloat(document.getElementById('pm_otherExp').value)||0;
   const water        = parseFloat(document.getElementById('pm_water').value)||0;
   const total        = parseFloat(document.getElementById('pm_total').value)||0;
   const status       = document.getElementById('pm_status').value;
@@ -1420,7 +1427,7 @@ function savePaymentUpdate() {
   ps[idx] = {
     ...ps[idx],
     prevReading, currReading, unitsConsumed, waterRate, meterPerfFactor,
-    maintenance, water, total, payStatus:status,
+    maintenance, otherExpenses, water, total, payStatus:status,
     payDate: document.getElementById('pm_date').value,
     paidAmt,
     balPaidDate: status==='Partial' ? document.getElementById('pm_balPaidDate').value : ''
