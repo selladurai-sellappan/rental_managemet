@@ -140,6 +140,8 @@ tr:hover td{background:#fafcff}
 .text-success{color:#38a169}
 .fw-bold{font-weight:700}
 .actions-row{display:flex;gap:6px;flex-wrap:wrap}
+.actions-row.icons{flex-wrap:nowrap}
+.btn.btn-icon{width:36px;min-width:36px;padding:0;justify-content:center;font-size:16px;min-height:36px;height:36px}
 .db-status{font-size:11px;color:rgba(255,255,255,.5);padding:0 18px 12px;display:flex;align-items:center;gap:6px}
 .db-dot{width:7px;height:7px;border-radius:50%;background:#68d391;flex-shrink:0}
 
@@ -433,10 +435,10 @@ tr:hover td{background:#fafcff}
         <div style="overflow-x:auto">
           <table>
             <thead><tr>
+              <th>Name</th><th>Status</th><th>Total (₹)</th><th>PDF</th><th>Edit</th>
+              <th>HID</th><th>Rent (₹)</th><th>Maint (₹)</th><th>Water Bill (₹)</th><th>Oth Exp (₹)</th>
+              <th>Paid On</th><th>Balance (₹)</th>
               <th style="width:38px;text-align:center"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" title="Select all"/></th>
-              <th>House ID</th><th>Tenant Name</th>
-              <th>Rent (₹)</th><th>Maintenance (₹)</th><th>Water Bill (₹)</th><th>Oth Exp (₹)</th><th>Total (₹)</th>
-              <th>Status</th><th>Paid Date</th><th>Balance (₹)</th><th>Receipt</th><th>Action</th>
             </tr></thead>
             <tbody id="dashBody"></tbody>
           </table>
@@ -1239,12 +1241,20 @@ function renderDashStats() {
   const totalWater = mp.reduce((s,p) => s + (parseFloat(p.water)||0), 0);
   const mExp       = mes.filter(x => x.month === m);
   const totalExp   = mExp.reduce((s,x) => s + (parseFloat(x.amount)||0), 0);
+  const balanceDue = mp.reduce((s,p) => s + rentBalance(p), 0);
   document.getElementById('dashStats').innerHTML = `
     <div class="stat-card"><div class="lbl">Paid This Month</div><div class="val" style="color:#38a169">${paid}</div><div class="sub">of ${mp.length} records</div></div>
     <div class="stat-card"><div class="lbl">Pending / Partial</div><div class="val" style="color:#dd6b20">${pending}</div><div class="sub">this month</div></div>
     <div class="stat-card"><div class="lbl">Total Water Bill</div><div class="val" style="color:#2c5282">₹${fmt(totalWater)}</div><div class="sub">all tenants this month</div></div>
     <div class="stat-card"><div class="lbl">Amount Collected</div><div class="val" style="color:#1a3c5e">₹${fmt(collected)}</div><div class="sub">paid + partial amounts</div></div>
-    <div class="stat-card"><div class="lbl">Total Expenses</div><div class="val" style="color:#c05621">₹${fmt(totalExp)}</div><div class="sub">this month</div></div>`;
+    <div class="stat-card"><div class="lbl">Total Expenses</div><div class="val" style="color:#c05621">₹${fmt(totalExp)}</div><div class="sub">this month</div></div>
+    <div class="stat-card"><div class="lbl">Amount Balance</div><div class="val" style="color:${balanceDue > 0 ? '#e53e3e' : '#38a169'}">₹${fmt(balanceDue)}</div><div class="sub">still owed by tenants</div></div>`;
+}
+
+function rentBalance(p) {
+  const total = parseFloat(p.total)||0;
+  const bal = p.payStatus==='Paid' ? 0 : p.payStatus==='Partial' ? (total-(parseFloat(p.paidAmt)||0)) : total;
+  return Math.max(0, bal);
 }
 
 function renderDashTable() {
@@ -1275,19 +1285,19 @@ function renderDashTable() {
       ? '<span class="text-success">—</span>'
       : `<span class="text-danger fw-bold">₹${fmt(balance)}</span>`;
     return `<tr>
-      <td style="text-align:center"><input type="checkbox" class="row-check" data-id="${r.id}" onchange="onRowCheck()"/></td>
-      <td><strong>${r.houseId}</strong></td>
       <td>${name}</td>
+      <td><span class="badge ${BADGE[r.payStatus]||'badge-pending'}">${r.payStatus}</span></td>
+      <td><strong>₹${fmt(total)}</strong></td>
+      <td><button class="btn btn-excel btn-sm" onclick="downloadReceipt('${r.id}')">⬇ PDF</button></td>
+      <td><button class="btn btn-outline btn-sm" onclick="openPaymentModal('${r.id}')">Update</button></td>
+      <td><strong>${r.houseId}</strong></td>
       <td>₹${fmt(parseFloat(r.rent)||0)}</td>
       <td>₹${fmt(parseFloat(r.maintenance)||0)}</td>
       <td>₹${fmt(water)}</td>
       <td>₹${fmt(parseFloat(r.otherExpenses)||0)}</td>
-      <td><strong>₹${fmt(total)}</strong></td>
-      <td><span class="badge ${BADGE[r.payStatus]||'badge-pending'}">${r.payStatus}</span></td>
       <td>${r.payDate||'—'}</td>
       <td>${balCell}</td>
-      <td><button class="btn btn-excel btn-sm" onclick="downloadReceipt('${r.id}')">⬇ PDF</button></td>
-      <td><button class="btn btn-outline btn-sm" onclick="openPaymentModal('${r.id}')">Update</button></td>
+      <td style="text-align:center"><input type="checkbox" class="row-check" data-id="${r.id}" onchange="onRowCheck()"/></td>
     </tr>`;
   }).join('');
 }
@@ -1694,6 +1704,7 @@ function generateMonthlyReport() {
     ${statBox('Amount Collected', '₹'+fmt(collected))}
     ${statBox('Total Water Bill', '₹'+fmt(totalWater))}
     ${statBox('Total Expenses', '₹'+fmt(totalExp))}
+    ${statBox('Amount Balance', '₹'+fmt(ps.reduce((s,p) => s + rentBalance(p), 0)))}
   </div>
 
   <div class="section-title">Payment Status</div>
@@ -1906,9 +1917,9 @@ function renderDashExpenses() {
     <td>₹${fmt(parseFloat(x.amount)||0)}</td>
     <td><span class="badge ${BADGE[x.status]||'badge-pending'}">${x.status}</span></td>
     <td>${x.payDate||'—'}</td>
-    <td><div class="actions-row">
-      <button class="btn btn-outline btn-sm" onclick="openDashEditModal('${x.id}')">Edit</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteDashExp('${x.id}')">Delete</button>
+    <td><div class="actions-row icons">
+      <button class="btn btn-outline btn-sm btn-icon" title="Edit" aria-label="Edit" onclick="openDashEditModal('${x.id}')">✏️</button>
+      <button class="btn btn-danger btn-sm btn-icon" title="Delete" aria-label="Delete" onclick="deleteDashExp('${x.id}')">🗑️</button>
     </div></td>
   </tr>`).join('');
 }
@@ -2004,9 +2015,9 @@ function renderExpensesTable() {
     <td><strong>${e.buildingId}</strong></td>
     <td>${e.category}</td>
     <td>${e.consumerNo||'—'}</td>
-    <td><div class="actions-row">
-      <button class="btn btn-outline btn-sm" onclick="openExpenseModal('${e.id}')">Edit</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">Delete</button>
+    <td><div class="actions-row icons">
+      <button class="btn btn-outline btn-sm btn-icon" title="Edit" aria-label="Edit" onclick="openExpenseModal('${e.id}')">✏️</button>
+      <button class="btn btn-danger btn-sm btn-icon" title="Delete" aria-label="Delete" onclick="deleteExpense('${e.id}')">🗑️</button>
     </div></td>
   </tr>`).join('');
 }
@@ -2220,10 +2231,10 @@ body{font-family:Arial,Helvetica,sans-serif;background:#dce3ea;padding:24px;colo
       <div class="fld"><div class="fl">Rent Amount</div>   <div class="fv">&#8377;${fmt(rent)}</div></div>
       <div class="fld"><div class="fl">Maintenance</div>  <div class="fv">&#8377;${fmt(maintenance)}</div></div>
       <div class="fld"><div class="fl">Water Bill</div>    <div class="fv">&#8377;${fmt(water)}</div></div>
+      <div class="fld"><div class="fl">Water Reading</div><div class="fv">${p.currReading||'—'}</div></div>
       ${otherExpenses > 0 ? `<div class="fld"><div class="fl">Other Expenses</div><div class="fv">&#8377;${fmt(otherExpenses)}</div></div>` : ''}
       <div class="fld"><div class="fl">Total Amount</div>  <div class="fv hi">&#8377;${fmt(total)}</div></div>
       <div class="fld"><div class="fl">Amount Paid</div>  <div class="fv green">&#8377;${fmt(paidAmt)}</div></div>
-      <div class="fld"><div class="fl">Water Reading</div><div class="fv">${p.currReading||'—'}</div></div>
       <div class="fld"><div class="fl">Payment Date</div> <div class="fv">${p.payDate||'—'}</div></div>
       <div class="fld"><div class="fl">Status</div>       <div class="fv" style="color:${sc};font-weight:800">${p.payStatus}</div></div>
       <div class="fld"><div class="fl">Payment ID</div>   <div class="fv tiny">${p.id}</div></div>

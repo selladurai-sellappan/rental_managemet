@@ -1,4 +1,4 @@
-const CACHE = 'rentease-v1';
+const CACHE = 'rentease-v2';
 const ASSETS = [
   '/rental_management.html',
   '/manifest.json',
