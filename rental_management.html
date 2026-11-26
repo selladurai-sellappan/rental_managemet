@@ -13,6 +13,7 @@
 <link rel="apple-touch-icon" href="icon-192.png"/>
 <!-- SheetJS for Excel read/write (requires internet on first load) -->
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333}
@@ -164,6 +165,8 @@ tr:hover td{background:#fafcff}
     box-shadow:0 2px 8px rgba(0,0,0,.2)
   }
   .mobile-topbar-title{color:#fff;font-size:16px;font-weight:800;letter-spacing:.2px}
+  .mobile-topbar-left{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+  .mobile-sync-status{color:rgba(255,255,255,.7);font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100vw - 80px)}
   .hamburger-btn{
     background:none;border:none;color:#fff;font-size:26px;
     cursor:pointer;padding:6px 4px;line-height:1;
@@ -266,57 +269,17 @@ tr:hover td{background:#fafcff}
       <h1>🏠 RentEase</h1>
       <p>Rental Management System</p>
     </div>
-    <div class="login-error" id="loginError">Invalid username or password</div>
+    <div class="login-error" id="loginError">Invalid email or password</div>
     <div class="form-group">
-      <label>Username</label>
-      <input type="text" id="loginUser" placeholder="Enter username" autocomplete="username"/>
+      <label>Email</label>
+      <input type="email" id="loginUser" placeholder="Enter email" autocomplete="username"/>
     </div>
     <div class="form-group">
       <label>Password</label>
       <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password"/>
     </div>
-    <button class="btn btn-primary btn-block" onclick="doLogin()">Sign In</button>
+    <button class="btn btn-primary btn-block" id="loginBtn" onclick="doLogin()">Sign In</button>
     <p class="forgot-link"><a href="#" onclick="openForgotModal();return false">Forgot Password?</a></p>
-  </div>
-</div>
-
-<!-- ======= SETUP (first launch) ======= -->
-<div id="setupPage" style="display:none">
-  <div class="login-card">
-    <div class="login-logo">
-      <h1>🏠 RentEase</h1>
-      <p>First-time Setup</p>
-    </div>
-    <div class="login-error" id="setupError"></div>
-    <p style="font-size:13px;color:#555;margin-bottom:20px;text-align:center">Welcome! Create your account credentials to get started.</p>
-    <div class="form-group">
-      <label>Username</label>
-      <input type="text" id="setupUser" placeholder="Choose a username" autocomplete="username"/>
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="setupPass" placeholder="Choose a password (min 6 chars)" autocomplete="new-password"/>
-    </div>
-    <div class="form-group">
-      <label>Confirm Password</label>
-      <input type="password" id="setupPass2" placeholder="Re-enter password" autocomplete="new-password"/>
-    </div>
-    <div class="form-group">
-      <label>Security Question</label>
-      <select id="setupSecQ">
-        <option value="">— Select a question —</option>
-        <option>What is your mother's maiden name?</option>
-        <option>What was the name of your first pet?</option>
-        <option>What was the name of your primary school?</option>
-        <option>What is your favourite book?</option>
-        <option>What city were you born in?</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Security Answer</label>
-      <input type="text" id="setupSecA" placeholder="Your answer (case-sensitive)"/>
-    </div>
-    <button class="btn btn-primary btn-block" onclick="doSetup()">Create Account</button>
   </div>
 </div>
 
@@ -329,22 +292,15 @@ tr:hover td{background:#fafcff}
     </div>
     <div class="login-error" id="forgotError"></div>
     <div id="forgotStep1">
-      <p style="font-size:13px;color:#666;margin-bottom:18px">Enter your username to retrieve your security question.</p>
+      <p style="font-size:13px;color:#666;margin-bottom:18px">Enter your email and we'll send you a link to reset your password.</p>
       <div class="form-group">
-        <label>Username</label>
-        <input type="text" id="forgotUser" placeholder="Enter your username"/>
+        <label>Email</label>
+        <input type="email" id="forgotEmail" placeholder="Enter your email"/>
       </div>
-      <button class="btn btn-primary btn-block" onclick="forgotStep1()">Continue</button>
+      <button class="btn btn-primary btn-block" onclick="sendResetLink()">Send Reset Link</button>
     </div>
     <div id="forgotStep2" style="display:none">
-      <div style="background:#ebf8ff;border-radius:8px;padding:14px;margin-bottom:16px;border-left:3px solid #2d6a9f">
-        <p style="font-size:11px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Security Question</p>
-        <p id="forgotSecQ" style="font-size:14px;color:#1a3c5e;font-weight:600"></p>
-      </div>
-      <div class="form-group">
-        <label>Your Answer</label>
-        <input type="text" id="forgotSecA" placeholder="Enter your answer (case-sensitive)"/>
-      </div>
+      <p style="font-size:13px;color:#666;margin-bottom:18px">Choose a new password for your account.</p>
       <div class="form-group">
         <label>New Password</label>
         <input type="password" id="forgotNewPass" placeholder="Enter new password (min 6 chars)"/>
@@ -353,7 +309,7 @@ tr:hover td{background:#fafcff}
         <label>Confirm New Password</label>
         <input type="password" id="forgotNewPass2" placeholder="Re-enter new password"/>
       </div>
-      <button class="btn btn-primary btn-block" onclick="doResetPassword()">Reset Password</button>
+      <button class="btn btn-primary btn-block" onclick="doResetPassword()">Save New Password</button>
     </div>
   </div>
 </div>
@@ -382,10 +338,10 @@ tr:hover td{background:#fafcff}
       <!-- hidden file input for import -->
       <input type="file" id="importFileInput" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)"/>
       <div class="nav-item" onclick="document.getElementById('importFileInput').click()">
-        <span class="nav-icon">📂</span> Import Excel DB
+        <span class="nav-icon">📂</span> Import Excel
       </div>
       <div class="nav-item" onclick="exportExcel()">
-        <span class="nav-icon">💾</span> Export Excel DB
+        <span class="nav-icon">💾</span> Export Excel Backup
       </div>
       <hr class="sidebar-divider"/>
       <div class="nav-item" onclick="openYearReportModal()">
@@ -395,7 +351,7 @@ tr:hover td{background:#fafcff}
         <span class="nav-icon">⚙</span> Settings
       </div>
     </div>
-    <div class="db-status"><div class="db-dot"></div><span id="dbStatusText">Database ready</span></div>
+    <div class="db-status"><div class="db-dot"></div><span id="dbStatusText">Connecting…</span></div>
     <div class="sidebar-footer">
       <div class="nav-item" onclick="doLogout()" style="border-left:none;padding-left:0">
         <span class="nav-icon">🚪</span> Logout
@@ -558,7 +514,10 @@ tr:hover td{background:#fafcff}
 
   <!-- ======= MOBILE TOP BAR ======= -->
   <div class="mobile-topbar">
-    <span class="mobile-topbar-title">🏠 RentEase</span>
+    <div class="mobile-topbar-left">
+      <span class="mobile-topbar-title">🏠 RentEase</span>
+      <span class="mobile-sync-status" id="mobileStatusText">Connecting…</span>
+    </div>
     <button class="hamburger-btn" onclick="toggleSideMenu()" aria-label="Menu">☰</button>
   </div>
 
@@ -586,10 +545,10 @@ tr:hover td{background:#fafcff}
       <span class="sd-icon">📅</span> Yearly Report
     </div>
     <div class="sd-item" onclick="document.getElementById('importFileInput').click();closeSideMenu()">
-      <span class="sd-icon">📂</span> Import Excel DB
+      <span class="sd-icon">📂</span> Import Excel
     </div>
     <div class="sd-item" onclick="exportExcel();closeSideMenu()">
-      <span class="sd-icon">💾</span> Export Excel DB
+      <span class="sd-icon">💾</span> Export Excel Backup
     </div>
     <div class="sd-item" onclick="openSettings();closeSideMenu()">
       <span class="sd-icon">⚙️</span> Settings
@@ -920,8 +879,19 @@ tr:hover td{background:#fafcff}
 
 <script>
 // ============================================================
-//  EXCEL WORKBOOK LAYER  (SheetJS — replaces localStorage)
+//  LOCAL EXCEL DATABASE + SUPABASE SYNC
+//  The Excel workbook saved on this device is the app's database, so everything
+//  works offline. Every 10 seconds (when online and logged in) this device pulls
+//  changes made on other devices from Supabase and sends its own changes up.
+//  If the same record was changed on two devices, the later change wins.
 // ============================================================
+
+// ---- Project settings: Supabase dashboard -> Project Settings -> API ----
+// (The anon/public key is meant to be in the page; the database's security rules protect the data.
+//  NEVER put the service_role key here.)
+const SUPABASE_URL = 'https://ouwdrlssfdpvwxshvdnk.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_u9FPvR3k-9841w2I5Rrh5Q_Ac_s2Y7Y';
+const SYNC_INTERVAL_MS = 10000;
 
 // Column definitions: [jsField, Excel column header]
 const T_FIELDS = [
@@ -959,44 +929,50 @@ const ME_FIELDS = [
   ['amount','Amount'],['status','Status'],['payDate','Payment Date']
 ];
 
-const U_FIELDS = [
-  ['username','Username'],['password','Password'],
-  ['secQuestion','Security Question'],['secAnswer','Security Answer']
-];
+const S_FIELDS = [['key','Key'],['value','Value']];
 
-let WB = null; // active SheetJS workbook
+// Each Excel sheet and its Supabase table. Column names are the jsField in snake_case (tenantId -> tenant_id).
+const TABLES = {
+  tenants:  { table: 'tenants',        key: 'tenantId', fields: T_FIELDS,  sheet: 'Tenants',
+              numeric: ['rent','deposit','waterRate','meterPerfFactor','maintenanceCost'] },
+  payments: { table: 'payments',       key: 'id',       fields: P_FIELDS,  sheet: 'Payments',
+              numeric: ['rent','water','total','paidAmt','prevReading','currReading','unitsConsumed','waterRate','meterPerfFactor','maintenance','otherExpenses'] },
+  expenses: { table: 'expenses',       key: 'id',       fields: E_FIELDS,  sheet: 'Expenses',      numeric: ['amount'] },
+  monthExp: { table: 'month_expenses', key: 'id',       fields: ME_FIELDS, sheet: 'MonthExpenses', numeric: ['amount'] },
+  settings: { table: 'settings',       key: 'key',      fields: S_FIELDS,  sheet: 'Settings',      numeric: [] }
+};
+const ID_PREFIX = { tenants: 'T', payments: 'P', expenses: 'EX', monthExp: 'ME', settings: 'S' };
 
-/* ---- init / load / save ---- */
-function initWorkbook() {
-  WB = XLSX.utils.book_new();
-  appendEmptySheet('Tenants',       T_FIELDS);
-  appendEmptySheet('Payments',      P_FIELDS);
-  appendEmptySheet('Expenses',      E_FIELDS);
-  appendEmptySheet('MonthExpenses', ME_FIELDS);
-  appendEmptySheet('Users',         U_FIELDS);
-  saveWB();
-}
+let WB = null;   // the Excel workbook on this device
+let sb = null;   // Supabase client
 
+/* ---- Excel workbook stored on this device ---- */
 function appendEmptySheet(name, fields) {
   const ws = XLSX.utils.aoa_to_sheet([fields.map(([,c])=>c)]);
   setColWidths(ws, fields.map(([,c])=>c), []);
   XLSX.utils.book_append_sheet(WB, ws, name);
 }
 
+function ensureSheets() {
+  Object.values(TABLES).forEach(s => { if (!WB.Sheets[s.sheet]) appendEmptySheet(s.sheet, s.fields); });
+  // the old app kept its username/password in a "Users" sheet; logins are handled by Supabase now
+  if (WB.Sheets['Users']) { delete WB.Sheets['Users']; WB.SheetNames = WB.SheetNames.filter(n => n !== 'Users'); }
+}
+
+function initWorkbook() {
+  WB = XLSX.utils.book_new();
+  ensureSheets();
+  saveWB();
+}
+
 function loadWB() {
   const b64 = localStorage.getItem('rms_excel');
   if (b64) {
-    try { WB = XLSX.read(b64, {type:'base64', cellDates:false}); setStatus('Database loaded'); }
+    try { WB = XLSX.read(b64, {type:'base64', cellDates:false}); }
     catch(e) { console.warn('Corrupt DB, reinitialising', e); initWorkbook(); }
-    // ensure required sheets exist
-    if (!WB.Sheets['Tenants'])       appendEmptySheet('Tenants',       T_FIELDS);
-    if (!WB.Sheets['Payments'])      appendEmptySheet('Payments',      P_FIELDS);
-    if (!WB.Sheets['Expenses'])      appendEmptySheet('Expenses',      E_FIELDS);
-    if (!WB.Sheets['MonthExpenses']) appendEmptySheet('MonthExpenses', ME_FIELDS);
-    if (!WB.Sheets['Users'])         appendEmptySheet('Users',         U_FIELDS);
+    ensureSheets();
   } else {
     initWorkbook();
-    setStatus('New database created');
   }
 }
 
@@ -1004,46 +980,17 @@ function saveWB() {
   try {
     const b64 = XLSX.write(WB, {bookType:'xlsx', type:'base64'});
     localStorage.setItem('rms_excel', b64);
-    setStatus('Saved · ' + new Date().toLocaleTimeString());
-  } catch(e) { setStatus('⚠ Save failed: ' + e.message); }
+  } catch(e) { setStatus('⚠ Could not save on this device: ' + e.message); }
 }
 
-/* ---- export / import ---- */
-function exportExcel() {
-  XLSX.writeFile(WB, 'RentEase_Database.xlsx');
-  setStatus('Exported · ' + new Date().toLocaleTimeString());
-}
-
-function importExcel(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      WB = XLSX.read(new Uint8Array(e.target.result), {type:'array', cellDates:false});
-      if (!WB.Sheets['Tenants'])       appendEmptySheet('Tenants',       T_FIELDS);
-      if (!WB.Sheets['Payments'])      appendEmptySheet('Payments',      P_FIELDS);
-      if (!WB.Sheets['Expenses'])      appendEmptySheet('Expenses',      E_FIELDS);
-      if (!WB.Sheets['MonthExpenses']) appendEmptySheet('MonthExpenses', ME_FIELDS);
-      saveWB();
-      renderDashboard(); renderTenantsTable(); renderPaymentsTable();
-      setStatus('Imported: ' + file.name);
-      alert('✅ Database imported from: ' + file.name);
-    } catch(err) { alert('❌ Failed to import: ' + err.message); }
-  };
-  reader.readAsArrayBuffer(file);
-  event.target.value = '';
-}
-
-/* ---- sheet helpers ---- */
 function setColWidths(ws, headers, rows) {
   ws['!cols'] = headers.map((h, i) => ({
     wch: Math.max(h.length + 2, ...rows.map(r => String(r[i]||'').length), 10)
   }));
 }
 
-function readSheet(sheetName, fields) {
-  const ws = WB.Sheets[sheetName];
+function readSheet(wb, sheetName, fields) {
+  const ws = wb.Sheets[sheetName];
   if (!ws) return [];
   return XLSX.utils.sheet_to_json(ws, {defval:''}).map(row => {
     const obj = {};
@@ -1062,31 +1009,293 @@ function writeSheet(sheetName, records, fields) {
   saveWB();
 }
 
-/* ---- public data API ---- */
-const getTenants      = () => readSheet('Tenants',       T_FIELDS);
-const getPayments     = () => readSheet('Payments',      P_FIELDS);
-const getExpenses     = () => readSheet('Expenses',      E_FIELDS);
-const getMonthExp     = () => readSheet('MonthExpenses', ME_FIELDS);
-const setTenants      = ts  => writeSheet('Tenants',       ts,  T_FIELDS);
-const setPayments     = ps  => writeSheet('Payments',      ps,  P_FIELDS);
-const setExpenses     = es  => writeSheet('Expenses',      es,  E_FIELDS);
-const setMonthExp     = mes => writeSheet('MonthExpenses', mes, ME_FIELDS);
-const getUsers        = ()  => readSheet('Users',         U_FIELDS);
-const setUsers        = us  => writeSheet('Users',        us,  U_FIELDS);
+const readList  = name        => readSheet(WB, TABLES[name].sheet, TABLES[name].fields);
+const writeList = (name, list) => writeSheet(TABLES[name].sheet, list, TABLES[name].fields);
+
+/* ---- sync bookkeeping (kept on this device) ----
+   SYNC.meta[list][recordKey] = { u: time of last change in ms, d: true if deleted, dirty: true if not sent yet }
+   SYNC.cursor = server time of the newest change already pulled from Supabase */
+const SYNC_KEY = 'rms_sync';
+let SYNC = { cursor: null, meta: {} };
+let syncing = false, syncTimer = null, lastSyncedAt = 0, lastSyncError = '';
+
+function loadSyncState() {
+  try { SYNC = JSON.parse(localStorage.getItem(SYNC_KEY)) || { cursor: null, meta: {} }; }
+  catch (e) { SYNC = { cursor: null, meta: {} }; }
+  if (!SYNC.meta) SYNC.meta = {};
+  Object.keys(TABLES).forEach(n => { SYNC.meta[n] = SYNC.meta[n] || {}; });
+}
+
+function saveSyncState() { localStorage.setItem(SYNC_KEY, JSON.stringify(SYNC)); }
+
+function pendingCount() {
+  return Object.values(SYNC.meta).reduce((n, m) => n + Object.values(m).filter(x => x.dirty).length, 0);
+}
+
+function updateSyncStatus() {
+  const n = pendingCount();
+  const waiting = `${n} change${n === 1 ? '' : 's'}`;
+  if (lastSyncError && navigator.onLine)  setStatus(`⚠ Sync problem, retrying · ${n ? waiting + ' not synced' : lastSyncError}`);
+  else if (n && !navigator.onLine)        setStatus(`⚠ Offline · ${waiting} saved on this device`);
+  else if (n)                             setStatus(`⏳ ${waiting} waiting to sync`);
+  else if (!navigator.onLine)             setStatus('⚠ Offline · all changes saved on this device');
+  else if (lastSyncedAt)                  setStatus('✓ Synced · ' + new Date(lastSyncedAt).toLocaleTimeString());
+  else                                    setStatus('Saved on this device');
+}
+
+/* ---- converting between Excel records and database rows ---- */
+const toColumn = f => f.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
+
+function toRow(rec, spec) {
+  const row = {};
+  spec.fields.forEach(([f]) => {
+    let v = rec[f];
+    if (v === undefined || v === null || v === '') v = null;
+    else if (spec.numeric.includes(f)) { v = parseFloat(v); if (isNaN(v)) v = null; }
+    else v = String(v);
+    row[toColumn(f)] = v;
+  });
+  return row;
+}
+
+function fromRow(row, spec) {
+  const rec = {};
+  spec.fields.forEach(([f]) => {
+    const v = row[toColumn(f)];
+    rec[f] = (v === null || v === undefined) ? '' : v;
+  });
+  return rec;
+}
+
+/* ---- saving a list: write the Excel sheet and mark what changed for the next sync ---- */
+function setRecords(name, list, markAll) {
+  const spec = TABLES[name], meta = SYNC.meta[name], now = Date.now();
+  const oldRows = new Map(readList(name).map(r => [String(r[spec.key]), JSON.stringify(toRow(r, spec))]));
+  const newKeys = new Set();
+  list.forEach(r => {
+    const k = String(r[spec.key]);
+    newKeys.add(k);
+    if (markAll || oldRows.get(k) !== JSON.stringify(toRow(r, spec))) meta[k] = { u: now, dirty: true };
+  });
+  oldRows.forEach((_, k) => { if (!newKeys.has(k)) meta[k] = { u: now, d: true, dirty: true }; });
+  writeList(name, list);
+  saveSyncState();
+  updateSyncStatus();
+  return true;
+}
+
+/* ---- public data API (same as before) ---- */
+const getTenants  = () => readList('tenants');
+const getPayments = () => readList('payments');
+const getExpenses = () => readList('expenses');
+const getMonthExp = () => readList('monthExp');
+const getSettings = () => readList('settings');
+const setTenants  = ts  => setRecords('tenants',  ts);
+const setPayments = ps  => setRecords('payments', ps);
+const setExpenses = es  => setRecords('expenses', es);
+const setMonthExp = mes => setRecords('monthExp', mes);
+
+/* ---- the 10-second sync ---- */
+function startSync() {
+  clearInterval(syncTimer);
+  syncTimer = setInterval(syncNow, SYNC_INTERVAL_MS);
+  syncNow();
+}
+
+function stopSync() { clearInterval(syncTimer); syncTimer = null; }
+
+async function syncNow() {
+  if (syncing || !sb) return;
+  if (!navigator.onLine) { updateSyncStatus(); return; }
+  syncing = true;
+  try {
+    const { data } = await sb.auth.getSession();
+    if (!data || !data.session) return;
+    const firstSync = !SYNC.cursor;
+    const changed = await pullChanges(firstSync);   // pull first, so a newer change from another device is not overwritten
+    await pushChanges();
+    if (firstSync) migrateOldWaterRate();
+    lastSyncedAt = Date.now();
+    lastSyncError = '';
+    if (changed) refreshCurrentView();
+  } catch (e) {
+    lastSyncError = e.message || String(e);
+    console.warn('Sync failed', e);
+  } finally {
+    syncing = false;
+    updateSyncStatus();
+  }
+}
+
+async function fetchChangedRows(table, since) {
+  const rows = [];
+  for (let from = 0; ; from += 1000) {            // Supabase returns at most 1000 rows per request
+    let q = sb.from(table).select('*');
+    if (since) q = q.gte('synced_at', since);
+    const { data, error } = await q.order('synced_at', { ascending: true }).range(from, from + 999);
+    if (error) throw error;
+    rows.push(...data);
+    if (data.length < 1000) return rows;
+  }
+}
+
+// Brings changes made on other devices into this device's Excel copy. Returns true if anything changed.
+async function pullChanges(firstSync) {
+  const names = Object.keys(TABLES);
+  // look back 1 minute before the last pull, in case a change was being saved at that moment (re-applying is harmless)
+  const since = SYNC.cursor ? new Date(new Date(SYNC.cursor).getTime() - 60000).toISOString() : null;
+  const results = await Promise.all(names.map(n => fetchChangedRows(TABLES[n].table, since)));
+
+  if (firstSync) handleFirstSync(results.every(rows => rows.every(r => r.deleted)));
+
+  let cursor = SYNC.cursor, anyChange = false;
+  names.forEach((n, i) => {
+    const spec = TABLES[n], meta = SYNC.meta[n], keyCol = toColumn(spec.key);
+    let list = null;
+    results[i].forEach(row => {
+      if (!cursor || row.synced_at > cursor) cursor = row.synced_at;
+      const k = String(row[keyCol]);
+      const local = meta[k];
+      const remoteU = Number(row.updated_at) || 0;
+      if (local && local.u > remoteU) return;                                   // this device has a newer change
+      if (local && local.u === remoteU && !!local.d === !!row.deleted) return;  // already up to date
+      if (!list) list = readList(n);
+      const idx = list.findIndex(r => String(r[spec.key]) === k);
+      if (row.deleted) { if (idx >= 0) list.splice(idx, 1); }
+      else { const rec = fromRow(row, spec); if (idx >= 0) list[idx] = rec; else list.push(rec); }
+      meta[k] = row.deleted ? { u: remoteU, d: true, dirty: false } : { u: remoteU, dirty: false };
+      anyChange = true;
+    });
+    if (list) writeList(n, list);
+  });
+  SYNC.cursor = cursor || '1970-01-01T00:00:00+00:00';
+  saveSyncState();
+  return anyChange;
+}
+
+// First sync on this device: decide what to do with records it had from before sync was set up
+function handleFirstSync(cloudIsEmpty) {
+  const legacy = {};
+  let count = 0;
+  for (const [n, spec] of Object.entries(TABLES)) {
+    legacy[n] = readList(n).filter(r => !SYNC.meta[n][String(r[spec.key])]);
+    count += legacy[n].length;
+  }
+  if (!count) return;
+  if (cloudIsEmpty && confirm(`This device has ${count} records that are not in the cloud yet.\n\nOK = upload them to the cloud\nCancel = start this device fresh from the cloud (a backup Excel file of this device's data is downloaded first)`)) {
+    const now = Date.now();
+    for (const [n, spec] of Object.entries(TABLES)) legacy[n].forEach(r => { SYNC.meta[n][String(r[spec.key])] = { u: now, dirty: true }; });
+    saveSyncState();
+    return;
+  }
+  // the cloud is the source of truth: keep a backup, then remove this device's old records
+  exportExcel('RentEase_Device_Backup_' + localDateStamp() + '.xlsx');
+  for (const [n, spec] of Object.entries(TABLES)) {
+    const oldKeys = new Set(legacy[n].map(r => String(r[spec.key])));
+    if (oldKeys.size) writeList(n, readList(n).filter(r => !oldKeys.has(String(r[spec.key]))));
+  }
+}
+
+// Sends this device's unsynced changes to Supabase
+async function pushChanges() {
+  for (const [n, spec] of Object.entries(TABLES)) {
+    const meta = SYNC.meta[n];
+    const dirtyKeys = Object.keys(meta).filter(k => meta[k].dirty);
+    if (!dirtyKeys.length) continue;
+    const keyCol = toColumn(spec.key);
+    const byKey = new Map(readList(n).map(r => [String(r[spec.key]), r]));
+    const rows = dirtyKeys.map(k => {
+      const m = meta[k], rec = byKey.get(k);
+      if (m.d || !rec) return { ...toRow({ [spec.key]: k }, spec), updated_at: m.u, deleted: true };
+      return { ...toRow(rec, spec), updated_at: m.u, deleted: false };
+    });
+    for (let i = 0; i < rows.length; i += 500) {
+      const batch = rows.slice(i, i + 500);
+      const { error } = await sb.from(spec.table).upsert(batch, { onConflict: keyCol });
+      if (error) throw error;
+      // mark as sent, unless the record was changed again while this was uploading
+      batch.forEach(r => { const k = String(r[keyCol]); if (meta[k] && meta[k].u === r.updated_at) meta[k].dirty = false; });
+      saveSyncState();
+    }
+  }
+}
+
+function refreshCurrentView() {
+  const active = document.querySelector('.view.active');
+  if (active && document.getElementById('appPage').style.display !== 'none') showView(active.id.replace('View', ''));
+}
+
+function localDateStamp() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+/* ---- Excel export / import ---- */
+function exportExcel(fileName) {
+  XLSX.writeFile(WB, typeof fileName === 'string' ? fileName : 'RentEase_Database.xlsx');
+  setStatus('Exported · ' + new Date().toLocaleTimeString());
+  setTimeout(updateSyncStatus, 3000);
+}
+
+// Replaces ALL data with the contents of an exported RentEase Excel file; the change then syncs to the cloud
+function importExcel(event) {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', cellDates:false});
+      const incoming = {};
+      for (const name of ['tenants', 'payments', 'expenses', 'monthExp']) {
+        const spec = TABLES[name], byKey = new Map();
+        readSheet(wb, spec.sheet, spec.fields).forEach(r => {
+          if (Object.values(r).every(v => v === '')) return;                   // skip empty rows
+          if (r[spec.key] === '') r[spec.key] = ID_PREFIX[name] + Date.now() + Math.random().toString(36).slice(2, 7);
+          byKey.set(String(r[spec.key]), r);                                     // duplicate IDs: keep the last one
+        });
+        incoming[name] = [...byKey.values()];
+      }
+      const summary = `${incoming.tenants.length} tenants\n${incoming.payments.length} payment records\n${incoming.expenses.length} expenses\n${incoming.monthExp.length} monthly expense records`;
+      if (!confirm(`Import "${file.name}"?\n\nThis REPLACES all data with the file's contents:\n${summary}\n\nRecords not in this file will be deleted here and, after syncing, on every device.`)) return;
+      Object.keys(incoming).forEach(n => setRecords(n, incoming[n], true));   // mark everything so the import wins
+      refreshCurrentView();
+      alert(`✅ Imported "${file.name}":\n\n${summary}\n\n${navigator.onLine ? 'It will sync to the cloud within a few seconds.' : 'It will sync to the cloud when you are back online.'}`);
+      syncNow();
+    } catch(err) { alert('❌ Failed to import: ' + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
 
 // ============================================================
-//  AUTH
+//  AUTH (Supabase email + password)
 // ============================================================
-function doLogin() {
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-  const users = getUsers();
-  if (users.length && users[0].username === u && users[0].password === p) {
-    sessionStorage.setItem('rms_a','1');
+function showLoginError(msg) {
+  const el = document.getElementById('loginError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginUser').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  if (!email || !pass) { showLoginError('Please enter your email and password.'); return; }
+  if (!navigator.onLine) { showLoginError('You are offline. Connect to the internet to sign in.'); return; }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) {
+      showLoginError(error.message === 'Invalid login credentials' ? 'Invalid email or password' : error.message);
+      return;
+    }
     document.getElementById('loginError').style.display = 'none';
     showApp();
-  } else {
-    document.getElementById('loginError').style.display = 'block';
+    startSync();
+  } catch (e) {
+    showLoginError('Sign in failed: ' + (e.message || e));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign In';
   }
 }
 
@@ -1102,8 +1311,11 @@ function closeSideMenu() {
   document.getElementById('sideDrawerOverlay').classList.remove('open');
 }
 
-function doLogout() {
-  sessionStorage.removeItem('rms_a');
+async function doLogout() {
+  // send any unsynced changes first so other devices get them (the Excel copy stays on this device)
+  if (navigator.onLine && pendingCount()) { try { await syncNow(); } catch (e) { console.warn(e); } }
+  stopSync();
+  try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { console.warn(e); }
   document.getElementById('appPage').style.display   = 'none';
   document.getElementById('loginPage').style.display = 'flex';
   document.getElementById('loginUser').value = '';
@@ -1112,36 +1324,14 @@ function doLogout() {
 
 function showApp() {
   document.getElementById('loginPage').style.display  = 'none';
-  document.getElementById('setupPage').style.display  = 'none';
   document.getElementById('appPage').style.display    = 'flex';
+  updateSyncStatus();
   showView('dashboard');
 }
 
-function showSetup() {
-  document.getElementById('loginPage').style.display  = 'none';
-  document.getElementById('setupPage').style.display  = 'flex';
-  document.getElementById('appPage').style.display    = 'none';
-}
-
-function doSetup() {
-  const u  = document.getElementById('setupUser').value.trim();
-  const p  = document.getElementById('setupPass').value;
-  const p2 = document.getElementById('setupPass2').value;
-  const q  = document.getElementById('setupSecQ').value;
-  const a  = document.getElementById('setupSecA').value.trim();
-  const err = document.getElementById('setupError');
-  if (!u || !p || !p2 || !q || !a) { err.textContent='All fields are required.'; err.style.display='block'; return; }
-  if (p !== p2) { err.textContent='Passwords do not match.'; err.style.display='block'; return; }
-  if (p.length < 6) { err.textContent='Password must be at least 6 characters.'; err.style.display='block'; return; }
-  setUsers([{ username: u, password: p, secQuestion: q, secAnswer: a }]);
-  sessionStorage.setItem('rms_a','1');
-  err.style.display = 'none';
-  showApp();
-}
-
+/* ---- forgot password: Supabase emails a reset link that opens this app ---- */
 function openForgotModal() {
-  document.getElementById('forgotUser').value      = '';
-  document.getElementById('forgotSecA').value      = '';
+  document.getElementById('forgotEmail').value     = document.getElementById('loginUser').value.trim();
   document.getElementById('forgotNewPass').value   = '';
   document.getElementById('forgotNewPass2').value  = '';
   document.getElementById('forgotError').style.display = 'none';
@@ -1154,37 +1344,40 @@ function closeForgotModal() {
   document.getElementById('forgotOverlay').style.display = 'none';
 }
 
-function forgotStep1() {
-  const u   = document.getElementById('forgotUser').value.trim();
+function showForgotError(msg) {
   const err = document.getElementById('forgotError');
-  if (!u) { err.textContent='Please enter your username.'; err.style.display='block'; return; }
-  const usr = getUsers().find(x => x.username === u);
-  if (!usr) { err.textContent='Username not found.'; err.style.display='block'; return; }
-  document.getElementById('forgotSecQ').textContent    = usr.secQuestion;
+  err.textContent = msg; err.style.display = 'block';
+}
+
+async function sendResetLink() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  if (!email) { showForgotError('Please enter your email.'); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  if (error) { showForgotError(error.message); return; }
+  closeForgotModal();
+  alert('If this email has an account, a password reset link has been sent to it.\nOpen the link on this device to choose a new password.');
+}
+
+// Called when the app is opened from the reset link in the email
+function showNewPasswordForm() {
   document.getElementById('forgotError').style.display = 'none';
   document.getElementById('forgotStep1').style.display = 'none';
   document.getElementById('forgotStep2').style.display = 'block';
+  document.getElementById('forgotOverlay').style.display = 'flex';
 }
 
-function doResetPassword() {
-  const u   = document.getElementById('forgotUser').value.trim();
-  const a   = document.getElementById('forgotSecA').value.trim();
+async function doResetPassword() {
   const np  = document.getElementById('forgotNewPass').value;
   const np2 = document.getElementById('forgotNewPass2').value;
-  const err = document.getElementById('forgotError');
-  const users = getUsers();
-  const idx   = users.findIndex(x => x.username === u);
-  if (idx < 0) { err.textContent='User not found.'; err.style.display='block'; return; }
-  if (users[idx].secAnswer !== a) { err.textContent='Incorrect answer to security question.'; err.style.display='block'; return; }
-  if (!np) { err.textContent='Please enter a new password.'; err.style.display='block'; return; }
-  if (np !== np2) { err.textContent='Passwords do not match.'; err.style.display='block'; return; }
-  if (np.length < 6) { err.textContent='Password must be at least 6 characters.'; err.style.display='block'; return; }
-  users[idx].password = np;
-  setUsers(users);
+  if (!np) { showForgotError('Please enter a new password.'); return; }
+  if (np !== np2) { showForgotError('Passwords do not match.'); return; }
+  if (np.length < 6) { showForgotError('Password must be at least 6 characters.'); return; }
+  const { error } = await sb.auth.updateUser({ password: np });
+  if (error) { showForgotError(error.message); return; }
   closeForgotModal();
   const toast = document.createElement('div');
   toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#48bb78;color:#fff;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
-  toast.textContent = '✓ Password reset successfully. Please log in.';
+  toast.textContent = '✓ Password changed successfully.';
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3500);
 }
@@ -1194,23 +1387,47 @@ function doResetPassword() {
 // ============================================================
 let _editTid = null, _editPid = null;
 
-window.onload = () => {
-  // Wait for SheetJS to be available
+function showStartupMessage(title, lines) {
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;flex-direction:column;gap:16px;padding:24px;text-align:center"><h2>' + title + '</h2>' + lines.map(l => '<p>' + l + '</p>').join('') + '</div>';
+}
+
+window.onload = async () => {
   if (typeof XLSX === 'undefined') {
-    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;flex-direction:column;gap:16px"><h2>⚠ SheetJS failed to load</h2><p>This app requires internet access on first load to download the Excel library.</p><p>Please check your internet connection and refresh the page.</p></div>';
+    showStartupMessage('⚠ SheetJS failed to load', ['This app requires internet access on first load to download the Excel library.', 'Please check your internet connection and refresh the page.']);
+    return;
+  }
+  if (typeof window.supabase === 'undefined') {
+    showStartupMessage('⚠ Could not load the cloud library', ['This app needs internet access the first time it is opened.', 'Please check your internet connection and refresh the page.']);
+    return;
+  }
+  if (SUPABASE_URL.startsWith('PASTE') || SUPABASE_KEY.startsWith('PASTE')) {
+    showStartupMessage('⚠ Supabase is not set up yet', ['Add the Supabase Project URL and anon key at the top of the app code.']);
     return;
   }
   loadWB();
+  loadSyncState();
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  sb.auth.onAuthStateChange(event => {
+    // don't call Supabase directly inside this callback; schedule it instead
+    if (event === 'PASSWORD_RECOVERY') setTimeout(showNewPasswordForm, 0);
+  });
+
   const m = new Date().toISOString().slice(0,7);
   const now = new Date();
   const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   document.getElementById('dashMonth').value = prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0');
   document.getElementById('initMonth').value  = m;
   document.getElementById('loginPass').onkeydown = e => { if(e.key==='Enter') doLogin(); };
-  document.getElementById('setupPass2').onkeydown = e => { if(e.key==='Enter') doSetup(); };
-  const users = getUsers();
-  if (!users.length) { showSetup(); return; }
-  if (sessionStorage.getItem('rms_a') === '1') showApp();
+
+  window.addEventListener('online',  () => syncNow());
+  window.addEventListener('offline', () => updateSyncStatus());
+
+  // a saved login works offline too: open the app from this device's Excel copy
+  const { data } = await sb.auth.getSession();
+  if (data && data.session) {
+    showApp();
+    startSync();
+  }
 };
 
 // ============================================================
@@ -1365,7 +1582,7 @@ function initiateMonth() {
   closeModal('initiateModal');
   document.getElementById('dashMonth').value = m;
   renderDashboard();
-  alert(`✅ Created ${newTs.length} payment record(s) for ${fmtMonth(m)}. Excel database updated.`);
+  alert(`✅ Created ${newTs.length} payment record(s) for ${fmtMonth(m)}. Saved — it will sync to the cloud automatically.`);
 }
 
 // ============================================================
@@ -1600,7 +1817,7 @@ function fmtMonth(m)    {
   return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+mo-1]+' '+y;
 }
 function setStatus(msg) {
-  const el = document.getElementById('dbStatusText'); if(el) el.textContent = msg;
+  ['dbStatusText', 'mobileStatusText'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = msg; });
 }
 
 // ============================================================
@@ -2155,8 +2372,21 @@ function deleteExpense(id) {
 // ============================================================
 //  WATER RATE SETTINGS
 // ============================================================
-function getWaterRate() { return parseFloat(localStorage.getItem('rms_wrate')) || 5; }
-function setWaterRate(r) { localStorage.setItem('rms_wrate', String(r)); }
+// The default water rate lives in the "Settings" sheet, which syncs like everything else
+function getWaterRate() {
+  const s = getSettings().find(x => x.key === 'waterRate');
+  return parseFloat(s && s.value) || 5;
+}
+function setWaterRate(r) {
+  const list = getSettings().filter(x => x.key !== 'waterRate');
+  list.push({ key: 'waterRate', value: String(r) });
+  return setRecords('settings', list);
+}
+// After the first sync: carry over the water rate this device used before (it was kept outside the Excel file)
+function migrateOldWaterRate() {
+  const oldRate = parseFloat(localStorage.getItem('rms_wrate'));
+  if (oldRate && !getSettings().some(x => x.key === 'waterRate')) setWaterRate(oldRate);
+}
 
 function openSettings() {
   document.getElementById('set_wrate').value = getWaterRate();
@@ -2165,7 +2395,7 @@ function openSettings() {
 function saveSettings() {
   const r = parseFloat(document.getElementById('set_wrate').value);
   if (isNaN(r) || r < 0) { alert('Please enter a valid rate.'); return; }
-  setWaterRate(r);
+  if (!setWaterRate(r)) return;
   closeModal('settingsModal');
   setStatus(`Water rate set to ₹${r}/unit`);
 }
