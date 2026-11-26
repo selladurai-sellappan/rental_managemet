@@ -435,7 +435,7 @@ tr:hover td{background:#fafcff}
         <div style="overflow-x:auto">
           <table>
             <thead><tr>
-              <th>Name</th><th>Status</th><th>Total (₹)</th><th>PDF</th><th>Edit</th>
+              <th>Name</th><th>Status</th><th>Total (₹)</th><th>PDF</th><th>Note</th><th>Edit</th>
               <th>HID</th><th>Rent (₹)</th><th>Maint (₹)</th><th>Water Bill (₹)</th><th>Oth Exp (₹)</th>
               <th>Paid On</th><th>Balance (₹)</th>
               <th style="width:38px;text-align:center"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" title="Select all"/></th>
@@ -1295,7 +1295,8 @@ function renderDashTable() {
       <td>${name}</td>
       <td><span class="badge ${BADGE[r.payStatus]||'badge-pending'}">${r.payStatus}</span></td>
       <td><strong>₹${fmt(total)}</strong></td>
-      <td><button class="btn btn-excel btn-sm" onclick="downloadReceipt('${r.id}')">⬇ PDF</button></td>
+      <td><button class="btn btn-excel btn-sm" onclick="downloadReceipt('${r.id}', false, this)">⬇ PDF</button></td>
+      <td><button class="btn btn-excel btn-sm" onclick="downloadReceipt('${r.id}', true, this)">⬇ Note</button></td>
       <td><button class="btn btn-outline btn-sm" onclick="openPaymentModal('${r.id}')">Update</button></td>
       <td><strong>${r.houseId}</strong></td>
       <td>₹${fmt(parseFloat(r.rent)||0)}</td>
@@ -2114,10 +2115,12 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
 // ============================================================
 //  PAYMENT RECEIPT  (opens in new tab → Save as PDF)
 // ============================================================
-function downloadReceipt(id) {
+// Builds the receipt page HTML. Returns null if the payment is not found.
+// isNote = true → short "Payment Note": hides meta bar, status banner, paid/date/status/ID rows, balance box, signatures
+function buildReceiptHtml(id, isNote) {
   const ps = getPayments();
   const p  = ps.find(x => x.id === id);
-  if (!p) { alert('Payment record not found.'); return; }
+  if (!p) return null;
   const ts = getTenants();
   const t  = ts.find(x => x.tenantId === p.tenantId) || {};
 
@@ -2144,7 +2147,7 @@ function downloadReceipt(id) {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Receipt – ${recNum}</title>
+<title>${isNote ? 'Note' : 'Receipt'} – ${recNum}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,Helvetica,sans-serif;background:#dce3ea;padding:24px;color:#333}
@@ -2209,10 +2212,6 @@ body{font-family:Arial,Helvetica,sans-serif;background:#dce3ea;padding:24px;colo
 </style>
 </head>
 <body>
-<div class="no-print">
-  <button class="dl-btn" onclick="window.print()">⬇ &nbsp;Download as PDF</button>
-  <p>In the print dialog → set <strong>Destination</strong> to <strong>Save as PDF</strong></p>
-</div>
 
 <div class="receipt">
 
@@ -2222,12 +2221,12 @@ body{font-family:Arial,Helvetica,sans-serif;background:#dce3ea;padding:24px;colo
       <p>Rental Management System</p>
     </div>
     <div class="rh-right">
-      <h2>PAYMENT RECEIPT</h2>
+      <h2>${isNote ? 'PAYMENT NOTE' : 'PAYMENT RECEIPT'}</h2>
       <small>${recNum}</small>
     </div>
   </div>
 
-  <div class="rm">
+  ${isNote ? '' : `<div class="rm">
     <span><strong>Receipt No:</strong> &nbsp;${recNum}</span>
     <span><strong>Period:</strong> &nbsp;${fmtMonth(p.month)}</span>
     <span><strong>Generated:</strong> &nbsp;${today}</span>
@@ -2236,7 +2235,7 @@ body{font-family:Arial,Helvetica,sans-serif;background:#dce3ea;padding:24px;colo
   <div class="sb">
     <span class="sb-icon">${si}</span>
     <span>PAYMENT &nbsp;${p.payStatus.toUpperCase()}</span>
-  </div>
+  </div>`}
 
   <div class="body" style="grid-template-columns:1fr">
     <div class="sec">
@@ -2249,32 +2248,32 @@ body{font-family:Arial,Helvetica,sans-serif;background:#dce3ea;padding:24px;colo
       <div class="fld"><div class="fl">Water Reading</div><div class="fv">${p.currReading||'—'}</div></div>
       ${otherExpenses > 0 ? `<div class="fld"><div class="fl">Other Expenses</div><div class="fv">&#8377;${fmt(otherExpenses)}</div></div>` : ''}
       <div class="fld"><div class="fl">Total Amount</div>  <div class="fv hi">&#8377;${fmt(total)}</div></div>
-      <div class="fld"><div class="fl">Amount Paid</div>  <div class="fv green">&#8377;${fmt(paidAmt)}</div></div>
+      ${isNote ? '' : `<div class="fld"><div class="fl">Amount Paid</div>  <div class="fv green">&#8377;${fmt(paidAmt)}</div></div>
       <div class="fld"><div class="fl">Payment Date</div> <div class="fv">${p.payDate||'—'}</div></div>
       <div class="fld"><div class="fl">Status</div>       <div class="fv" style="color:${sc};font-weight:800">${p.payStatus}</div></div>
-      <div class="fld"><div class="fl">Payment ID</div>   <div class="fv tiny">${p.id}</div></div>
+      <div class="fld"><div class="fl">Payment ID</div>   <div class="fv tiny">${p.id}</div></div>`}
     </div>
   </div>
 
-  <div class="totals">
+  <div class="totals"${isNote ? ' style="grid-template-columns:1fr"' : ''}>
     <div class="tot-box">
       <div class="tl">Total Amount Due</div>
       <div class="tv">&#8377;${fmt(total)}</div>
     </div>
-    <div class="bal-box">
+    ${isNote ? '' : `<div class="bal-box">
       <div class="tl">${balance > 0 ? 'Outstanding Balance' : 'Payment Balance'}</div>
       <div class="tv">&#8377;${fmt(balance)}</div>
       <div class="tsub">${balance > 0 ? 'Amount still due' : 'Fully settled — no balance'}</div>
-    </div>
+    </div>`}
   </div>
 
-  <div class="sigs">
+  ${isNote ? '' : `<div class="sigs">
     <div class="sig"><div class="sig-line"></div><div class="sig-lbl">Owner / Landlord Signature</div></div>
     <div class="sig"><div class="sig-line"></div><div class="sig-lbl">Tenant Signature</div></div>
-  </div>
+  </div>`}
 
   <div class="rf">
-    <strong>RentEase</strong> &nbsp;&#183;&nbsp; This is a computer-generated receipt &nbsp;&#183;&nbsp; ${recNum}
+    <strong>RentEase</strong> &nbsp;&#183;&nbsp; This is a computer-generated ${isNote ? 'note' : 'receipt'} &nbsp;&#183;&nbsp; ${recNum}
     <br/>Generated on ${today}
   </div>
 
@@ -2282,11 +2281,102 @@ body{font-family:Arial,Helvetica,sans-serif;background:#dce3ea;padding:24px;colo
 </body>
 </html>`;
 
-  const win = window.open('', '_blank', 'width=980,height=820');
-  if (!win) { alert('Pop-ups are blocked.\nPlease allow pop-ups for this page to download receipts.'); return; }
-  win.document.write(html);
-  win.document.close();
-  win.focus();
+  const fileName = ((isNote ? 'Note_' : 'Receipt_') + p.houseId + '_' + p.month).replace(/[^A-Za-z0-9_-]/g, '_') + '.pdf';
+  const title    = (isNote ? 'Payment Note' : 'Payment Receipt') + ' – ' + tenantName + ' – ' + fmtMonth(p.month);
+  return { html, fileName, title };
+}
+
+// Loads a script from a URL once (later calls reuse the same promise)
+const loadedScripts = {};
+function loadScriptOnce(url) {
+  if (!loadedScripts[url]) {
+    loadedScripts[url] = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = url;
+      s.onload = resolve;
+      s.onerror = () => { delete loadedScripts[url]; reject(new Error('Could not load ' + url)); };
+      document.head.appendChild(s);
+    });
+  }
+  return loadedScripts[url];
+}
+
+// Renders the receipt in a hidden frame and converts it to a PDF File (no window is shown)
+async function makeReceiptPdf(id, isNote) {
+  const built = buildReceiptHtml(id, isNote);
+  if (!built) throw new Error('Payment record not found.');
+  await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+  const frame = document.createElement('iframe');
+  frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:900px;height:1400px;border:0;visibility:hidden';
+  document.body.appendChild(frame);
+  try {
+    const doc = frame.contentDocument;
+    doc.open(); doc.write(built.html); doc.close();
+    if (doc.fonts && doc.fonts.ready) await doc.fonts.ready;
+    const canvas = await html2canvas(doc.querySelector('.receipt'), {scale: 2, backgroundColor: '#ffffff'});
+    const pdf = new window.jspdf.jsPDF({unit: 'mm', format: 'a4'});
+    // Fit onto one A4 page (210 x 297 mm), shrinking if the receipt is taller than A4
+    let width = 210, height = canvas.height * 210 / canvas.width;
+    if (height > 297) { width = width * 297 / height; height = 297; }
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', (210 - width) / 2, 0, width, height);
+    return { file: new File([pdf.output('blob')], built.fileName, {type: 'application/pdf'}), title: built.title };
+  } finally {
+    frame.remove();
+  }
+}
+
+// Downloads the file, then shows a pop-up with an "Open" button for it
+function saveFile(file) {
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = file.name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  showDownloadPopup(file.name, url);
+}
+
+function showDownloadPopup(fileName, url) {
+  const old = document.getElementById('downloadPopup');
+  if (old) old.closePopup();
+  const popup = document.createElement('div');
+  popup.id = 'downloadPopup';
+  popup.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#48bb78;color:#fff;padding:10px 12px 10px 18px;border-radius:8px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px)';
+  popup.innerHTML = `
+    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">✓ Downloaded ${fileName}</span>
+    <button style="background:#fff;color:#276749;border:none;border-radius:6px;padding:7px 16px;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0">Open</button>
+    <button aria-label="Close" style="background:none;border:none;color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:0 4px;flex-shrink:0">×</button>`;
+  const [openBtn, closeBtn] = popup.querySelectorAll('button');
+  let timer;
+  popup.closePopup = () => {
+    clearTimeout(timer);
+    popup.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);   // keep the file alive a while in case it was just opened
+  };
+  openBtn.onclick = () => { window.open(url, '_blank'); popup.closePopup(); };
+  closeBtn.onclick = () => popup.closePopup();
+  timer = setTimeout(() => popup.closePopup(), 12000);
+  document.body.appendChild(popup);
+}
+
+// Shows "…" on the clicked button while the PDF is being built
+async function withBusyButton(btn, task) {
+  const label = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '…'; }
+  try { await task(); }
+  catch (e) { console.warn(e); alert('Could not create the PDF: ' + e.message + '\nPlease check your internet connection and try again.'); }
+  finally { if (btn) { btn.disabled = false; btn.innerHTML = label; } }
+}
+
+// ⬇ PDF / ⬇ Note buttons: build the PDF and download it directly
+function downloadReceipt(id, isNote, btn) {
+  return withBusyButton(btn, async () => {
+    const result = await makeReceiptPdf(id, isNote);
+    saveFile(result.file);
+  });
 }
 </script>
 <script>
