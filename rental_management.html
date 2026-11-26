@@ -429,7 +429,7 @@ tr:hover td{background:#fafcff}
           <h3>Payment Status</h3>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <button class="btn btn-danger btn-sm" id="clearSelectedBtn" onclick="clearSelected()" style="display:none">🗑 Clear Selected</button>
-            <input class="search-bar" type="text" placeholder="Search house / tenant…" oninput="renderDashTable()" id="dashSearch"/>
+            <input class="search-bar" type="text" placeholder="Search house / tenant / status…" oninput="renderDashTable()" id="dashSearch"/>
           </div>
         </div>
         <div style="overflow-x:auto">
@@ -475,6 +475,7 @@ tr:hover td{background:#fafcff}
         <div class="page-title"><h2>Tenants</h2><p>Manage all tenant details</p></div>
         <div class="header-actions">
           <button class="btn btn-excel" onclick="exportExcel()">⬇ Export Excel</button>
+          <button class="btn btn-outline" onclick="downloadTenantsReport(this)">⬇ Tenants Report</button>
           <button class="btn btn-primary" onclick="openTenantModal(null)">+ Add New Tenant</button>
         </div>
       </div>
@@ -506,7 +507,13 @@ tr:hover td{background:#fafcff}
       <div class="table-container">
         <div class="table-header">
           <h3>All Records</h3>
-          <input class="search-bar" type="text" placeholder="Search…" oninput="renderPaymentsTable()" id="paySearch"/>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input class="search-bar" type="text" placeholder="Filter by name…" oninput="renderPaymentsTable()" id="payNameFilter"/>
+            <select class="search-bar" style="width:auto;min-width:150px" onchange="renderPaymentsTable()" id="payStatusFilter">
+              <option value="">All Statuses</option>
+              <option>Paid</option><option>Pending</option><option>Partial</option><option>Informed</option>
+            </select>
+          </div>
         </div>
         <div style="overflow-x:auto">
           <table>
@@ -1275,7 +1282,7 @@ function renderDashTable() {
   }).filter(r => {
     if (!q) return true;
     const name = ((r._t.firstName||'')+' '+(r._t.lastName||'')).toLowerCase();
-    return r.houseId.toLowerCase().includes(q) || name.includes(q);
+    return r.houseId.toLowerCase().includes(q) || name.includes(q) || (r.payStatus||'').toLowerCase().includes(q);
   }).sort((a,b) => byId(a.houseId, b.houseId));
 
   const tbody = document.getElementById('dashBody');
@@ -1558,16 +1565,18 @@ function renderPaymentsTable() {
     const t = ts.find(x => x.tenantId === p.tenantId);
     return t ? `${t.firstName||''} ${t.lastName||''}`.trim() : '';
   };
-  const q  = (document.getElementById('paySearch')?.value||'').toLowerCase();
+  const nameQ  = (document.getElementById('payNameFilter')?.value||'').trim().toLowerCase();
+  const status = document.getElementById('payStatusFilter')?.value||'';
   const list = ps.filter(p => {
-    if (!q) return true;
-    return p.houseId.toLowerCase().includes(q)||p.month.includes(q)||tenantName(p).toLowerCase().includes(q);
+    if (nameQ && !tenantName(p).toLowerCase().includes(nameQ)) return false;
+    if (status && p.payStatus !== status) return false;
+    return true;
   }).sort((a,b) => b.month.localeCompare(a.month)||byId(a.houseId, b.houseId));
   const tbody = document.getElementById('payBody');
   const empty = document.getElementById('payEmpty');
   if (!list.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display = 'none';
-  const BADGE = {Paid:'badge-paid',Pending:'badge-pending',Partial:'badge-partial'};
+  const BADGE = {Paid:'badge-paid',Pending:'badge-pending',Partial:'badge-partial',Informed:'badge-informed'};
   tbody.innerHTML = list.map(p => `<tr>
     <td><strong>${p.houseId}</strong></td>
     <td>${tenantName(p)||'—'}</td>
@@ -2369,6 +2378,65 @@ async function withBusyButton(btn, task) {
   try { await task(); }
   catch (e) { console.warn(e); alert('Could not create the PDF: ' + e.message + '\nPlease check your internet connection and try again.'); }
   finally { if (btn) { btn.disabled = false; btn.innerHTML = label; } }
+}
+
+// ⬇ Tenants Report button: PDF table of all Active tenants (sorted by House ID), downloaded directly
+function downloadTenantsReport(btn) {
+  return withBusyButton(btn, async () => {
+    const tenants = getTenants()
+      .filter(t => t.status === 'Active')
+      .sort((a,b) => byId(a.houseId, b.houseId));
+    if (!tenants.length) { alert('There are no active tenants to include in the report.'); return; }
+
+    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+
+    // The built-in PDF font has no ₹ symbol, so amounts use "Rs."
+    const money = v => (v === '' || v === undefined || v === null) ? '—' : 'Rs. ' + fmt(parseFloat(v) || 0);
+    const rows = tenants.map(t => [
+      t.houseId || '—',
+      `${t.firstName||''} ${t.lastName||''}`.trim() || '—',
+      t.contact || '—',
+      t.aadhaar || '—',
+      money(t.rent),
+      money(t.deposit),
+      t.depositDate || '—',
+      t.occupiedDate || '—',
+      t.agreement || '—'
+    ]);
+
+    const pdf = new window.jspdf.jsPDF({orientation: 'landscape', unit: 'mm', format: 'a4'});
+    const today = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'});
+    pdf.setFont('helvetica', 'bold');  pdf.setFontSize(16); pdf.setTextColor(26, 60, 94);
+    pdf.text('RentEase - Active Tenants Report', 14, 16);
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10); pdf.setTextColor(110, 110, 110);
+    pdf.text(`Generated on ${today}   ·   ${tenants.length} active tenant${tenants.length === 1 ? '' : 's'}`, 14, 23);
+
+    pdf.autoTable({
+      startY: 28,
+      head: [['House ID', 'Full Name', 'Contact Number', 'Aadhaar Number', 'Rent', 'Deposit', 'Deposit Date', 'Occupied On', 'Agreement']],
+      body: rows,
+      styles: {font: 'helvetica', fontSize: 9, cellPadding: 2.5, valign: 'middle'},
+      headStyles: {fillColor: [26, 60, 94], textColor: 255, fontStyle: 'bold'},
+      alternateRowStyles: {fillColor: [247, 250, 252]},
+      columnStyles: {0: {fontStyle: 'bold'}, 4: {halign: 'right'}, 5: {halign: 'right'}},
+      margin: {left: 14, right: 14},
+      didParseCell: data => {
+        // right-align the Rent and Deposit headings to match their amounts
+        if (data.section === 'head' && (data.column.index === 4 || data.column.index === 5)) data.cell.styles.halign = 'right';
+      },
+      didDrawPage: () => {
+        const page = pdf.internal.getCurrentPageInfo().pageNumber;
+        pdf.setFontSize(8); pdf.setTextColor(160, 160, 160);
+        pdf.text(`RentEase · Tenants Report · Page ${page}`, 148.5, 203, {align: 'center'});
+      }
+    });
+
+    const now = new Date();
+    const localDate = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    const fileName = 'Tenants_Report_' + localDate + '.pdf';
+    saveFile(new File([pdf.output('blob')], fileName, {type: 'application/pdf'}));
+  });
 }
 
 // ⬇ PDF / ⬇ Note buttons: build the PDF and download it directly

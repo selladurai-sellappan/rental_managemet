@@ -1,4 +1,4 @@
-const CACHE = 'rentease-v3';
+const CACHE = 'rentease-v4';
 const ASSETS = [
   '/rental_management.html',
   '/manifest.json',
@@ -6,7 +6,8 @@ const ASSETS = [
   '/icon-512.png',
   'https://unpkg.com/xlsx/dist/xlsx.full.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'
 ];
 
 self.addEventListener('install', e => {
