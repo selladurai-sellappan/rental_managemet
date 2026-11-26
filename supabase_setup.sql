@@ -137,13 +137,23 @@ create trigger sync_guard before insert or update on public.month_expenses for e
 create trigger sync_guard before insert or update on public.settings       for each row execute function public.rentease_sync_guard();
 
 -- ---------- Security: only the owner's login can read or change anything ----------
+-- Once two-factor login is switched on in the app, the login must also have entered the authenticator code.
 
 create or replace function public.is_owner()
 returns boolean
 language sql
 stable
+security definer
+set search_path = ''
 as $$
   select lower(coalesce(auth.jwt() ->> 'email', '')) = lower('YOUR_LOGIN_EMAIL')
+     and (
+       coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2'
+       or not exists (
+         select 1 from auth.mfa_factors f
+         where f.user_id = auth.uid() and f.status = 'verified'
+       )
+     )
 $$;
 
 alter table public.tenants        enable row level security;

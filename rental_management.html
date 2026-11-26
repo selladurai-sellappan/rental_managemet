@@ -29,7 +29,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333}
 .forgot-link{text-align:center;margin-top:14px}
 .forgot-link a{font-size:12px;color:#2d6a9f;text-decoration:none}
 .forgot-link a:hover{text-decoration:underline}
-#setupPage{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a3c5e,#2d6a9f)}
+#mfaPage{min-height:100vh;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a3c5e,#2d6a9f)}
 
 /* FORMS */
 .form-group{margin-bottom:18px}
@@ -280,6 +280,24 @@ tr:hover td{background:#fafcff}
     </div>
     <button class="btn btn-primary btn-block" id="loginBtn" onclick="doLogin()">Sign In</button>
     <p class="forgot-link"><a href="#" onclick="openForgotModal();return false">Forgot Password?</a></p>
+  </div>
+</div>
+
+<!-- ======= TWO-FACTOR CODE (after email + password, when two-factor login is on) ======= -->
+<div id="mfaPage" style="display:none">
+  <div class="login-card">
+    <div class="login-logo">
+      <h1>🔐 RentEase</h1>
+      <p>Two-Factor Login</p>
+    </div>
+    <div class="login-error" id="mfaError"></div>
+    <p style="font-size:13px;color:#555;margin-bottom:18px;text-align:center">Open the authenticator app on your phone and enter the 6-digit code for RentEase.</p>
+    <div class="form-group">
+      <label>Code</label>
+      <input type="text" id="mfaCode" inputmode="numeric" maxlength="6" placeholder="123456" autocomplete="one-time-code"/>
+    </div>
+    <button class="btn btn-primary btn-block" id="mfaBtn" onclick="verifyMfaLogin()">Verify</button>
+    <p class="forgot-link"><a href="#" onclick="doLogout();return false">Sign out</a></p>
   </div>
 </div>
 
@@ -869,6 +887,20 @@ tr:hover td{background:#fafcff}
         <input type="number" id="set_wrate" placeholder="e.g. 5" min="0" step="0.5"/>
         <p style="font-size:11px;color:#999;margin-top:6px">Used automatically when a new month is initiated. You can still override per payment.</p>
       </div>
+      <div class="form-group" style="border-top:1px solid #eee;padding-top:14px;margin-top:6px">
+        <label>Two-Factor Login</label>
+        <div id="mfaStatus" style="font-size:13px;color:#555;margin-bottom:8px">Checking…</div>
+        <div id="mfaButtons"></div>
+        <div id="mfaEnrollBox" style="display:none">
+          <p style="font-size:12px;color:#666;margin-bottom:8px">1. On the chosen phone, open Google Authenticator or Microsoft Authenticator, tap <strong>+</strong> and scan this code:</p>
+          <img id="mfaQr" alt="QR code to scan" style="width:180px;height:180px;display:block;margin:0 auto 6px;background:#fff"/>
+          <p style="font-size:11px;color:#999;text-align:center;word-break:break-all">Can't scan? Enter this key instead: <strong id="mfaSecret"></strong></p>
+          <p style="font-size:12px;color:#666;margin:10px 0 6px">2. Type the 6-digit code the app shows:</p>
+          <input type="text" id="mfaEnrollCode" inputmode="numeric" maxlength="6" placeholder="123456" autocomplete="one-time-code"/>
+          <div class="login-error" id="mfaEnrollError"></div>
+          <button class="btn btn-primary btn-block" style="margin-top:8px" onclick="finishMfaSetup()">Turn On Two-Factor Login</button>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('settingsModal')">Cancel</button>
@@ -1111,6 +1143,7 @@ async function syncNow() {
   try {
     const { data } = await sb.auth.getSession();
     if (!data || !data.session) return;
+    if (await needsMfaCode()) { showMfaPage(); return; }
     const firstSync = !SYNC.cursor;
     const changed = await pullChanges(firstSync);   // pull first, so a newer change from another device is not overwritten
     await pushChanges();
@@ -1121,6 +1154,11 @@ async function syncNow() {
   } catch (e) {
     lastSyncError = e.message || String(e);
     console.warn('Sync failed', e);
+    // "permission denied": two-factor may have been switched on from another device -> ask for the code
+    if (e && e.code === '42501') {
+      try { await sb.auth.refreshSession(); } catch (_) {}
+      if (await needsMfaCode()) showMfaPage();
+    }
   } finally {
     syncing = false;
     updateSyncStatus();
@@ -1290,8 +1328,7 @@ async function doLogin() {
       return;
     }
     document.getElementById('loginError').style.display = 'none';
-    showApp();
-    startSync();
+    await afterSignIn();
   } catch (e) {
     showLoginError('Sign in failed: ' + (e.message || e));
   } finally {
@@ -1317,6 +1354,7 @@ async function doLogout() {
   stopSync();
   try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { console.warn(e); }
   document.getElementById('appPage').style.display   = 'none';
+  document.getElementById('mfaPage').style.display   = 'none';
   document.getElementById('loginPage').style.display = 'flex';
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
@@ -1324,9 +1362,128 @@ async function doLogout() {
 
 function showApp() {
   document.getElementById('loginPage').style.display  = 'none';
+  document.getElementById('mfaPage').style.display    = 'none';
   document.getElementById('appPage').style.display    = 'flex';
   updateSyncStatus();
   showView('dashboard');
+}
+
+/* ---- two-factor login (authenticator app code) ---- */
+
+// True when two-factor login is on for this account but this login has not entered the code yet
+async function needsMfaCode() {
+  const { data, error } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (error) { console.warn(error); return false; }
+  return data.nextLevel === 'aal2' && data.currentLevel !== 'aal2';
+}
+
+// After a sign-in (or opening the app with a saved login): ask for the code if needed, otherwise open the app
+async function afterSignIn() {
+  // refresh the login so it knows whether two-factor was switched on from another device
+  if (navigator.onLine) { try { await sb.auth.refreshSession(); } catch (e) { console.warn(e); } }
+  if (await needsMfaCode()) { showMfaPage(); return; }
+  showApp();
+  startSync();
+}
+
+function showMfaPage() {
+  stopSync();
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('appPage').style.display   = 'none';
+  document.getElementById('mfaPage').style.display   = 'flex';
+  document.getElementById('mfaError').style.display  = 'none';
+  document.getElementById('mfaCode').value = '';
+  document.getElementById('mfaCode').focus();
+}
+
+async function verifiedTotpFactor() {
+  const { data, error } = await sb.auth.mfa.listFactors();
+  if (error) throw error;
+  return (data.totp || []).find(f => f.status === 'verified') || null;
+}
+
+async function verifyMfaLogin() {
+  const err  = document.getElementById('mfaError');
+  const code = document.getElementById('mfaCode').value.replace(/\s/g, '');
+  const showErr = m => { err.textContent = m; err.style.display = 'block'; };
+  if (!/^\d{6}$/.test(code)) { showErr('Please enter the 6-digit code.'); return; }
+  if (!navigator.onLine) { showErr('You are offline. Connect to the internet to verify the code.'); return; }
+  const btn = document.getElementById('mfaBtn');
+  btn.disabled = true; btn.textContent = 'Verifying…';
+  try {
+    const factor = await verifiedTotpFactor();
+    if (!factor) { showApp(); startSync(); return; }          // two-factor was switched off meanwhile
+    const { error } = await sb.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
+    if (error) { showErr(/invalid|expired/i.test(error.message) ? 'Wrong or expired code. Please try the current code.' : error.message); return; }
+    showApp();
+    startSync();
+  } catch (e) {
+    showErr('Could not verify: ' + (e.message || e));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Verify';
+  }
+}
+
+// Settings window: show whether two-factor login is on, with Set Up / Turn Off buttons
+let mfaEnrollFactorId = null;
+async function refreshMfaSettings() {
+  const status = document.getElementById('mfaStatus'), buttons = document.getElementById('mfaButtons');
+  document.getElementById('mfaEnrollBox').style.display = 'none';
+  buttons.innerHTML = '';
+  if (!navigator.onLine) { status.textContent = 'Connect to the internet to view or change two-factor login.'; return; }
+  try {
+    if (await verifiedTotpFactor()) {
+      status.innerHTML = '✅ <strong>On</strong> — signing in on a new device needs the code from the authenticator app.';
+      buttons.innerHTML = '<button class="btn btn-danger btn-sm" onclick="turnOffMfa()">Turn Off</button>';
+    } else {
+      status.innerHTML = '<strong>Off</strong> — signing in needs only email and password.';
+      buttons.innerHTML = '<button class="btn btn-outline btn-sm" onclick="startMfaSetup()">Set Up</button>';
+    }
+  } catch (e) { status.textContent = '⚠ ' + (e.message || e); }
+}
+
+async function startMfaSetup() {
+  try {
+    // clear any setup that was started but never finished
+    const { data: list } = await sb.auth.mfa.listFactors();
+    for (const f of ((list && list.all) || []).filter(f => f.status !== 'verified')) await sb.auth.mfa.unenroll({ factorId: f.id });
+
+    const { data, error } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'RentEase ' + new Date().toISOString().slice(0, 16) });
+    if (error) throw error;
+    mfaEnrollFactorId = data.id;
+    const qr = data.totp.qr_code;
+    document.getElementById('mfaQr').src = qr.startsWith('data:') ? qr : 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(qr);
+    document.getElementById('mfaSecret').textContent = data.totp.secret;
+    document.getElementById('mfaEnrollCode').value = '';
+    document.getElementById('mfaEnrollError').style.display = 'none';
+    document.getElementById('mfaButtons').innerHTML = '';
+    document.getElementById('mfaEnrollBox').style.display = 'block';
+  } catch (e) { alert('Could not start two-factor setup: ' + (e.message || e)); }
+}
+
+async function finishMfaSetup() {
+  const err  = document.getElementById('mfaEnrollError');
+  const code = document.getElementById('mfaEnrollCode').value.replace(/\s/g, '');
+  const showErr = m => { err.textContent = m; err.style.display = 'block'; };
+  if (!/^\d{6}$/.test(code)) { showErr('Please enter the 6-digit code.'); return; }
+  const { error } = await sb.auth.mfa.challengeAndVerify({ factorId: mfaEnrollFactorId, code });
+  if (error) { showErr(/invalid|expired/i.test(error.message) ? 'Wrong or expired code. Please try the current code.' : error.message); return; }
+  mfaEnrollFactorId = null;
+  alert('✅ Two-factor login is on.\n\nFrom now on, signing in on a new device (or after logging out) needs the 6-digit code from the authenticator app on that phone.\nDevices that are already signed in will ask for the code once.');
+  refreshMfaSettings();
+}
+
+async function turnOffMfa() {
+  if (!confirm('Turn off two-factor login?\n\nSigning in on a new device will then need only email and password.')) return;
+  try {
+    const factor = await verifiedTotpFactor();
+    if (factor) {
+      const { error } = await sb.auth.mfa.unenroll({ factorId: factor.id });
+      if (error) throw error;
+      await sb.auth.refreshSession();
+    }
+  } catch (e) { alert('Could not turn off two-factor login: ' + (e.message || e)); }
+  refreshMfaSettings();
 }
 
 /* ---- forgot password: Supabase emails a reset link that opens this app ---- */
@@ -1423,11 +1580,11 @@ window.onload = async () => {
   window.addEventListener('offline', () => updateSyncStatus());
 
   // a saved login works offline too: open the app from this device's Excel copy
+  document.getElementById('mfaCode').onkeydown = e => { if(e.key==='Enter') verifyMfaLogin(); };
+  document.getElementById('mfaEnrollCode').onkeydown = e => { if(e.key==='Enter') finishMfaSetup(); };
+
   const { data } = await sb.auth.getSession();
-  if (data && data.session) {
-    showApp();
-    startSync();
-  }
+  if (data && data.session) await afterSignIn();
 };
 
 // ============================================================
@@ -2391,6 +2548,7 @@ function migrateOldWaterRate() {
 function openSettings() {
   document.getElementById('set_wrate').value = getWaterRate();
   openModal('settingsModal');
+  refreshMfaSettings();
 }
 function saveSettings() {
   const r = parseFloat(document.getElementById('set_wrate').value);
