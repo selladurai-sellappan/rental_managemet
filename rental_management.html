@@ -487,7 +487,7 @@ tr:hover td{background:#fafcff}
           <table>
             <thead><tr>
               <th>House ID</th><th>Name</th>
-              <th>Contact</th><th>Rent (₹)</th><th>Occupied On</th>
+              <th>Contact</th><th>Rent (₹)</th><th>Deposit</th><th>Occupied On</th>
               <th>Rent Cycle</th><th>Status</th><th>Actions</th>
             </tr></thead>
             <tbody id="tenantBody"></tbody>
@@ -1515,13 +1515,14 @@ function renderTenantsTable() {
     <td>${t.firstName||''} ${t.lastName||''}</td>
     <td>${t.contact||'—'}</td>
     <td>₹${fmt(parseFloat(t.rent)||0)}</td>
+    <td>${t.deposit ? '₹'+fmt(parseFloat(t.deposit)||0) : '—'}</td>
     <td>${t.occupiedDate||'—'}</td>
     <td>${t.rentCycle||'1st of every month'}</td>
     <td><span class="badge ${t.status==='Active'?'badge-active':'badge-inactive'}">${t.status}</span></td>
-    <td><div class="actions-row">
-      <button class="btn btn-outline btn-sm" onclick="viewTenant('${t.tenantId}')">View</button>
-      <button class="btn btn-outline btn-sm" onclick="openTenantModal('${t.tenantId}')">Edit</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteTenant('${t.tenantId}')">Delete</button>
+    <td><div class="actions-row icons">
+      <button class="btn btn-outline btn-sm btn-icon" title="View" aria-label="View" onclick="viewTenant('${t.tenantId}')">👁️</button>
+      <button class="btn btn-outline btn-sm btn-icon" title="Edit" aria-label="Edit" onclick="openTenantModal('${t.tenantId}')">✏️</button>
+      <button class="btn btn-danger btn-sm btn-icon" title="Delete" aria-label="Delete" onclick="deleteTenant('${t.tenantId}')">🗑️</button>
     </div></td>
   </tr>`).join('');
 }
@@ -1556,7 +1557,7 @@ function renderPaymentsTable() {
   const list = ps.filter(p => {
     if (!q) return true;
     return p.houseId.toLowerCase().includes(q)||p.month.includes(q);
-  }).sort((a,b) => b.month.localeCompare(a.month)||a.houseId.localeCompare(b.houseId));
+  }).sort((a,b) => b.month.localeCompare(a.month)||byId(a.houseId, b.houseId));
   const tbody = document.getElementById('payBody');
   const empty = document.getElementById('payEmpty');
   if (!list.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
