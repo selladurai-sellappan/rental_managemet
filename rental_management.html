@@ -511,7 +511,7 @@ tr:hover td{background:#fafcff}
         <div style="overflow-x:auto">
           <table>
             <thead><tr>
-              <th>House ID</th><th>Month</th>
+              <th>House ID</th><th>Name</th><th>Month</th>
               <th>Rent Amount (₹)</th><th>Payment Status</th><th>Payment Date</th>
             </tr></thead>
             <tbody id="payBody"></tbody>
@@ -1552,11 +1552,15 @@ function viewTenant(id) {
 //  PAYMENT RECORDS TABLE
 // ============================================================
 function renderPaymentsTable() {
-  const ps = getPayments();
+  const ps = getPayments(), ts = getTenants();
+  const tenantName = p => {
+    const t = ts.find(x => x.tenantId === p.tenantId);
+    return t ? `${t.firstName||''} ${t.lastName||''}`.trim() : '';
+  };
   const q  = (document.getElementById('paySearch')?.value||'').toLowerCase();
   const list = ps.filter(p => {
     if (!q) return true;
-    return p.houseId.toLowerCase().includes(q)||p.month.includes(q);
+    return p.houseId.toLowerCase().includes(q)||p.month.includes(q)||tenantName(p).toLowerCase().includes(q);
   }).sort((a,b) => b.month.localeCompare(a.month)||byId(a.houseId, b.houseId));
   const tbody = document.getElementById('payBody');
   const empty = document.getElementById('payEmpty');
@@ -1565,6 +1569,7 @@ function renderPaymentsTable() {
   const BADGE = {Paid:'badge-paid',Pending:'badge-pending',Partial:'badge-partial'};
   tbody.innerHTML = list.map(p => `<tr>
     <td><strong>${p.houseId}</strong></td>
+    <td>${tenantName(p)||'—'}</td>
     <td>${fmtMonth(p.month)}</td>
     <td>₹${fmt(parseFloat(p.rent)||0)}</td>
     <td><span class="badge ${BADGE[p.payStatus]||'badge-pending'}">${p.payStatus}</span></td>
@@ -1631,8 +1636,8 @@ function generateMonthlyReport() {
   const m = document.getElementById('dashMonth').value;
   if (!m) { alert('Please select a month first.'); return; }
   const ts  = getTenants();
-  const ps  = getPayments().filter(p => p.month === m);
-  const mes = getMonthExp().filter(x => x.month === m);
+  const ps  = getPayments().filter(p => p.month === m).sort((a,b) => byId(a.houseId, b.houseId));
+  const mes = getMonthExp().filter(x => x.month === m).sort((a,b) => byId(a.buildingId, b.buildingId));
 
   // stats
   const active    = ts.filter(t => t.status === 'Active').length;
@@ -1752,8 +1757,10 @@ function generateYearlyReport() {
   const yr  = document.getElementById('yr_year').value;
   if (!yr) return;
   const ts  = getTenants();
-  const ps  = getPayments().filter(p => (p.month||'').startsWith(yr));
-  const mes = getMonthExp().filter(x => (x.month||'').startsWith(yr));
+  const ps  = getPayments().filter(p => (p.month||'').startsWith(yr))
+    .sort((a,b) => a.month.localeCompare(b.month) || byId(a.houseId, b.houseId));
+  const mes = getMonthExp().filter(x => (x.month||'').startsWith(yr))
+    .sort((a,b) => a.month.localeCompare(b.month) || byId(a.buildingId, b.buildingId));
 
   // Summary stats
   const collected  = ps.filter(p => p.payStatus==='Paid'||p.payStatus==='Partial')
