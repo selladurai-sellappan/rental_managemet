@@ -414,7 +414,7 @@ tr:hover td{background:#fafcff}
         </div>
         <div class="header-actions">
           <button class="btn btn-excel" onclick="exportExcel()">⬇ Export Excel</button>
-          <button class="btn btn-outline" onclick="generateMonthlyReport()">📄 Monthly Report</button>
+          <button class="btn btn-outline" onclick="generateMonthlyReport(this)">📄 Monthly Report</button>
           <button class="btn btn-danger" onclick="clearMonth()">🗑 Clear Month</button>
           <button class="btn btn-primary" onclick="openInitiateModal()">+ Initiate New Month</button>
         </div>
@@ -435,7 +435,7 @@ tr:hover td{background:#fafcff}
         <div style="overflow-x:auto">
           <table>
             <thead><tr>
-              <th>Name</th><th>Status</th><th>Total (₹)</th><th>PDF</th><th>Note</th><th>Edit</th>
+              <th>Name</th><th>Status</th><th>Total (₹)</th><th>Note</th><th>PDF</th><th>Edit</th>
               <th>HID</th><th>Rent (₹)</th><th>Maint (₹)</th><th>Water Bill (₹)</th><th>Oth Exp (₹)</th>
               <th>Paid On</th><th>Balance (₹)</th>
               <th style="width:38px;text-align:center"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" title="Select all"/></th>
@@ -849,7 +849,7 @@ tr:hover td{background:#fafcff}
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('yearReportModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="generateYearlyReport()">Generate PDF</button>
+      <button class="btn btn-primary" onclick="generateYearlyReport(this)">Download PDF</button>
     </div>
   </div>
 </div>
@@ -1302,8 +1302,8 @@ function renderDashTable() {
       <td>${name}</td>
       <td><span class="badge ${BADGE[r.payStatus]||'badge-pending'}">${r.payStatus}</span></td>
       <td><strong>₹${fmt(total)}</strong></td>
-      <td><button class="btn btn-excel btn-sm" onclick="downloadReceipt('${r.id}', false, this)">⬇ PDF</button></td>
       <td><button class="btn btn-excel btn-sm" onclick="downloadReceipt('${r.id}', true, this)">⬇ Note</button></td>
+      <td><button class="btn btn-excel btn-sm" onclick="downloadReceipt('${r.id}', false, this)">⬇ PDF</button></td>
       <td><button class="btn btn-outline btn-sm" onclick="openPaymentModal('${r.id}')">Update</button></td>
       <td><strong>${r.houseId}</strong></td>
       <td>₹${fmt(parseFloat(r.rent)||0)}</td>
@@ -1452,7 +1452,7 @@ function savePaymentUpdate() {
   const paidAmt      = status==='Paid' ? total : status==='Partial' ? parseFloat(document.getElementById('pm_paidAmt').value)||0 : 0;
   ps[idx] = {
     ...ps[idx],
-    prevReading, currReading, unitsConsumed, waterRate, meterPerfFactor,
+    rent, prevReading, currReading, unitsConsumed, waterRate, meterPerfFactor,
     maintenance, otherExpenses, water, total, payStatus:status,
     payDate: document.getElementById('pm_date').value,
     paidAmt,
@@ -1642,7 +1642,7 @@ function clearSelected() {
   renderDashboard();
 }
 
-function generateMonthlyReport() {
+function generateMonthlyReport(btn) {
   const m = document.getElementById('dashMonth').value;
   if (!m) { alert('Please select a month first.'); return; }
   const ts  = getTenants();
@@ -1743,12 +1743,11 @@ function generateMonthlyReport() {
   </table>` : '<p style="color:#718096;font-style:italic">No expenses recorded for this month.</p>'}
 
   <div class="footer">RentEase · Monthly Report · ${fmtMonth(m)}</div>
-  <script>window.onload=()=>{window.print();}<\/script>
   </body></html>`;
 
-  const w = window.open('','_blank');
-  w.document.write(html);
-  w.document.close();
+  return withBusyButton(btn, async () => {
+    saveFile(await htmlToPdf(html, 'Monthly_Report_' + m + '.pdf'));
+  });
 }
 
 function openYearReportModal() {
@@ -1763,7 +1762,7 @@ function openYearReportModal() {
   openModal('yearReportModal');
 }
 
-function generateYearlyReport() {
+function generateYearlyReport(btn) {
   const yr  = document.getElementById('yr_year').value;
   if (!yr) return;
   const ts  = getTenants();
@@ -1864,13 +1863,68 @@ function generateYearlyReport() {
   </table>` : '<p style="color:#718096;font-style:italic">No expenses recorded for this year.</p>'}
 
   <div class="footer">RentEase · Yearly Report · ${yr}</div>
-  <script>window.onload=()=>{window.print();}<\/script>
   </body></html>`;
 
-  closeModal('yearReportModal');
-  const w = window.open('','_blank');
-  w.document.write(html);
-  w.document.close();
+  return withBusyButton(btn, async () => {
+    saveFile(await htmlToPdf(html, 'Yearly_Report_' + yr + '.pdf'));
+    closeModal('yearReportModal');
+  });
+}
+
+// Renders a full report page in a hidden frame and turns it into a multi-page landscape A4 PDF.
+// Page breaks are placed between table rows / sections so nothing is cut in half.
+async function htmlToPdf(html, fileName) {
+  await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+  const PAGE_W = 297, PAGE_H = 210;        // landscape A4 in mm
+  const FRAME_W = 1123;                     // 297 mm at 96 dpi
+  const frame = document.createElement('iframe');
+  frame.style.cssText = `position:fixed;left:-10000px;top:0;width:${FRAME_W}px;height:800px;border:0;visibility:hidden`;
+  document.body.appendChild(frame);
+  try {
+    const doc = frame.contentDocument;
+    doc.open(); doc.write(html); doc.close();
+    if (doc.fonts && doc.fonts.ready) await doc.fonts.ready;
+    const body = doc.body;
+    const totalH = Math.ceil(body.scrollHeight);
+
+    // Safe places to start a new page: below any table row, above any section heading
+    const breaks = [];
+    body.querySelectorAll('tr, p, .stats, .cards').forEach(el => breaks.push(el.getBoundingClientRect().bottom));
+    body.querySelectorAll('.section-title, .footer').forEach(el => breaks.push(el.getBoundingClientRect().top));
+    breaks.sort((a, b) => a - b);
+
+    const scale = 1.5;   // sharp enough to read, keeps long yearly reports a reasonable file size
+    const canvas = await html2canvas(body, {scale, backgroundColor: '#ffffff', width: FRAME_W, windowWidth: FRAME_W, height: totalH, windowHeight: totalH});
+    const pxPerMm = FRAME_W / PAGE_W;
+    const pageHpx = Math.floor(PAGE_H * pxPerMm);
+
+    const pdf = new window.jspdf.jsPDF({orientation: 'landscape', unit: 'mm', format: 'a4'});
+    let start = 0, first = true;
+    while (start < totalH - 1) {
+      let end = Math.min(start + pageHpx, totalH);
+      if (end < totalH) {
+        const safe = breaks.filter(b => b > start + 40 && b <= end);
+        if (safe.length) end = Math.floor(safe[safe.length - 1]);
+      }
+      // copy this slice of the big canvas onto its own page-sized canvas
+      const slice = document.createElement('canvas');
+      slice.width = canvas.width;
+      slice.height = Math.ceil((end - start) * scale);
+      const ctx = slice.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, slice.width, slice.height);
+      ctx.drawImage(canvas, 0, start * scale, canvas.width, slice.height, 0, 0, slice.width, slice.height);
+      if (!first) pdf.addPage();
+      pdf.addImage(slice.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, PAGE_W, (end - start) / pxPerMm);
+      first = false;
+      start = end;
+    }
+    return new File([pdf.output('blob')], fileName, {type: 'application/pdf'});
+  } finally {
+    frame.remove();
+  }
 }
 
 function clearMonth() {
@@ -1928,7 +1982,7 @@ function clearExpSelected() {
 function renderDashExpenses() {
   const mes   = getMonthExp();
   const m     = document.getElementById('dashMonth').value;
-  const list  = mes.filter(x => x.month === m);
+  const list  = mes.filter(x => x.month === m).sort((a,b) => byId(a.buildingId, b.buildingId));
   const tbody = document.getElementById('dashExpBody');
   const empty = document.getElementById('dashExpEmpty');
   if (!list.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
@@ -2336,7 +2390,7 @@ async function makeReceiptPdf(id, isNote) {
   }
 }
 
-// Downloads the file, then shows a pop-up with an "Open" button for it
+// Downloads the file directly (the phone/browser shows its own download notice)
 function saveFile(file) {
   const url = URL.createObjectURL(file);
   const link = document.createElement('a');
@@ -2345,30 +2399,7 @@ function saveFile(file) {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  showDownloadPopup(file.name, url);
-}
-
-function showDownloadPopup(fileName, url) {
-  const old = document.getElementById('downloadPopup');
-  if (old) old.closePopup();
-  const popup = document.createElement('div');
-  popup.id = 'downloadPopup';
-  popup.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#48bb78;color:#fff;padding:10px 12px 10px 18px;border-radius:8px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px)';
-  popup.innerHTML = `
-    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">✓ Downloaded ${fileName}</span>
-    <button style="background:#fff;color:#276749;border:none;border-radius:6px;padding:7px 16px;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0">Open</button>
-    <button aria-label="Close" style="background:none;border:none;color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:0 4px;flex-shrink:0">×</button>`;
-  const [openBtn, closeBtn] = popup.querySelectorAll('button');
-  let timer;
-  popup.closePopup = () => {
-    clearTimeout(timer);
-    popup.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);   // keep the file alive a while in case it was just opened
-  };
-  openBtn.onclick = () => { window.open(url, '_blank'); popup.closePopup(); };
-  closeBtn.onclick = () => popup.closePopup();
-  timer = setTimeout(() => popup.closePopup(), 12000);
-  document.body.appendChild(popup);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 // Shows "…" on the clicked button while the PDF is being built
