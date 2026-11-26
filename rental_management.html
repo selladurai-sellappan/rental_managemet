@@ -1195,7 +1195,9 @@ window.onload = () => {
   }
   loadWB();
   const m = new Date().toISOString().slice(0,7);
-  document.getElementById('dashMonth').value = m;
+  const now = new Date();
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  document.getElementById('dashMonth').value = prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0');
   document.getElementById('initMonth').value  = m;
   document.getElementById('loginPass').onkeydown = e => { if(e.key==='Enter') doLogin(); };
   document.getElementById('setupPass2').onkeydown = e => { if(e.key==='Enter') doSetup(); };
@@ -1251,6 +1253,11 @@ function renderDashStats() {
     <div class="stat-card"><div class="lbl">Amount Balance</div><div class="val" style="color:${balanceDue > 0 ? '#e53e3e' : '#38a169'}">₹${fmt(balanceDue)}</div><div class="sub">still owed by tenants</div></div>`;
 }
 
+// Natural sort for IDs so "H2" comes before "H10"
+function byId(a, b) {
+  return String(a||'').localeCompare(String(b||''), undefined, {numeric: true, sensitivity: 'base'});
+}
+
 function rentBalance(p) {
   const total = parseFloat(p.total)||0;
   const bal = p.payStatus==='Paid' ? 0 : p.payStatus==='Partial' ? (total-(parseFloat(p.paidAmt)||0)) : total;
@@ -1269,7 +1276,7 @@ function renderDashTable() {
     if (!q) return true;
     const name = ((r._t.firstName||'')+' '+(r._t.lastName||'')).toLowerCase();
     return r.houseId.toLowerCase().includes(q) || name.includes(q);
-  });
+  }).sort((a,b) => byId(a.houseId, b.houseId));
 
   const tbody = document.getElementById('dashBody');
   const empty = document.getElementById('dashEmpty');
@@ -1498,7 +1505,7 @@ function renderTenantsTable() {
     if (!q) return true;
     const name = ((t.firstName||'')+' '+(t.lastName||'')).toLowerCase();
     return name.includes(q)||t.houseId.toLowerCase().includes(q);
-  });
+  }).sort((a,b) => byId(a.houseId, b.houseId));
   const tbody = document.getElementById('tenantBody');
   const empty = document.getElementById('tenantEmpty');
   if (!list.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
@@ -2006,7 +2013,7 @@ function renderExpensesTable() {
         || (e.category||'').toLowerCase().includes(q)
         || (e.consumerNo||'').toLowerCase().includes(q)
         || (e.month||'').includes(q);
-  });
+  }).sort((a,b) => byId(a.buildingId, b.buildingId));
   const tbody = document.getElementById('expBody');
   const empty = document.getElementById('expEmpty');
   if (!list.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
